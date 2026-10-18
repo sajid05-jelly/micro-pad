@@ -7,7 +7,7 @@ console.log('Target: Local Vite dev server on port 5173');
 console.log('====================================================\n');
 
 // Detect if cloudflared should be launched
-const tunnelProcess = spawn('npx', ['--yes', 'cloudflared', 'tunnel', '--url', 'http://127.0.0.1:5173'], {
+const tunnelProcess = spawn('npx --yes cloudflared tunnel --url http://127.0.0.1:5173', [], {
   shell: true,
   stdio: ['ignore', 'pipe', 'pipe']
 });
