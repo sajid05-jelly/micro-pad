@@ -17,12 +17,38 @@ export interface ClientNetworkStats {
   jitterMs: number;
   bitrateKbps: number;
   candidateType: string;
+  bytesSent: number;
+  packetsSent: number;
+}
+
+export interface AudioLevelData {
+  rms: number;          // Linear RMS: 0.0 to 1.0+
+  db: number;           // dBFS: -60 to 0 (or -Infinity)
+  levelPct: number;     // Normalized visual percentage: 0 to 100
+  isSpeaking: boolean;  // Voice activity threshold
+  peak: number;         // Peak amplitude: 0.0 to 1.0
+  rawRms: number;       // Raw pre-sensitivity RMS
+}
+
+export interface MicrophoneDiagnostics {
+  isSecureContext: boolean;
+  hasGetUserMedia: boolean;
+  audioContextState: AudioContextState | 'none';
+  trackCount: number;
+  trackLabel: string;
+  trackReadyState: MediaStreamTrackState | 'none';
+  trackEnabled: boolean;
+  trackMuted: boolean;
+  sampleRate: number;
+  inputDevices: { deviceId: string; label: string }[];
 }
 
 export class ParticipantAudioEngine {
   private stream: MediaStream | null = null;
   private audioContext: AudioContext | null = null;
+  private sourceNode: MediaStreamAudioSourceNode | null = null;
   private analyser: AnalyserNode | null = null;
+  private timeDomainBuffer: Float32Array | null = null;
   private peerConnection: RTCPeerConnection | null = null;
   private animationFrameId: number | null = null;
   private isMuted: boolean = false;
@@ -30,77 +56,148 @@ export class ParticipantAudioEngine {
   private pendingCandidates: RTCIceCandidateInit[] = [];
   private lastStatsTimestamp: number = 0;
   private lastBytesSent: number = 0;
+  private totalPacketsSent: number = 0;
 
   constructor() {}
 
-  public async startMicrophone(existingStream?: MediaStream, mode: 'stage' | 'conference' = 'stage'): Promise<MediaStream> {
-    if (this.stream) {
-      return this.stream;
+  /**
+   * Resumes or initializes the AudioContext inside a user gesture handler.
+   * Mobile browsers (Safari/Chrome) strictly suspend AudioContexts until user interacts.
+   */
+  public async resumeAudioContext(): Promise<AudioContextState> {
+    if (!this.audioContext || this.audioContext.state === 'closed') {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return 'closed';
+      this.audioContext = new AudioCtx({ latencyHint: 'interactive' });
+    }
+
+    if (this.audioContext.state === 'suspended') {
+      try {
+        await this.audioContext.resume();
+      } catch (err) {
+        console.warn('[ParticipantAudioEngine] AudioContext resume failed:', err);
+      }
+    }
+
+    return this.audioContext.state;
+  }
+
+  /**
+   * Captures the microphone stream directly from a user click handler.
+   * Validates secure context, getUserMedia presence, track readiness, and connects to AnalyserNode.
+   */
+  public async startMicrophone(
+    existingStream?: MediaStream,
+    mode: 'stage' | 'conference' = 'stage'
+  ): Promise<MediaStream> {
+    // 1. Verify Secure Context requirement
+    const isSecure = typeof window !== 'undefined' ? window.isSecureContext : true;
+    const isLocalhost = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    if (!isSecure && !isLocalhost) {
+      throw new Error(
+        "Mobile browsers strictly require HTTPS to access the microphone. Current link is unencrypted HTTP. Open via secure HTTPS link."
+      );
+    }
+
+    // 2. Verify getUserMedia availability
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      throw new Error(
+        "navigator.mediaDevices.getUserMedia is unavailable in this browser context. Please ensure you are using Safari or Chrome on HTTPS."
+      );
     }
 
     let stream = existingStream;
 
-    if (!stream) {
-      const nav = typeof navigator !== 'undefined' ? (navigator as any) : {};
-      const getUserMedia = nav.mediaDevices?.getUserMedia?.bind(nav.mediaDevices) ||
-        (nav.getUserMedia ? (constraints: any) => new Promise<MediaStream>((res, rej) => nav.getUserMedia(constraints, res, rej)) : null) ||
-        (nav.webkitGetUserMedia ? (constraints: any) => new Promise<MediaStream>((res, rej) => nav.webkitGetUserMedia(constraints, res, rej)) : null) ||
-        (nav.mozGetUserMedia ? (constraints: any) => new Promise<MediaStream>((res, rej) => nav.mozGetUserMedia(constraints, res, rej)) : null);
-
-      if (!getUserMedia) {
-        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-          throw new Error("Mobile browsers require HTTPS or localhost to access the microphone. Please open via https:// or test on localhost.");
-        }
-        throw new Error("Microphone API not supported or blocked by this browser.");
+    // Check if existingStream is still valid and live
+    if (stream) {
+      const tracks = stream.getAudioTracks();
+      if (tracks.length === 0 || tracks[0].readyState !== 'live') {
+        stream = undefined; // Force re-acquisition
       }
+    }
 
-      // Stage profile: echoCancellation & noiseSuppression FALSE to prevent phone DSP from ducking
-      // or filtering vocal warmth when standing away from speaker in venue hall
+    // 3. Acquire fresh audio stream if not provided or expired
+    if (!stream) {
       const audioConstraints: MediaTrackConstraints = mode === 'stage' ? {
         echoCancellation: false,
         noiseSuppression: false,
-        autoGainControl: true,
-        channelCount: 1,
-        sampleRate: 48000
+        autoGainControl: true
       } : {
         echoCancellation: true,
         noiseSuppression: true,
-        autoGainControl: true,
-        channelCount: 1,
-        sampleRate: 48000
+        autoGainControl: true
       };
 
       try {
-        stream = await getUserMedia({
+        stream = await navigator.mediaDevices.getUserMedia({
           audio: audioConstraints,
           video: false
         });
-      } catch (e) {
-        // Fallback to basic audio constraints if device rejects exact sampleRate
-        stream = await getUserMedia({
-          audio: { autoGainControl: true },
+      } catch (err: any) {
+        // Fallback to basic audio constraint if device rejects custom flags
+        console.warn('[ParticipantAudioEngine] Fallback to basic audio: true:', err);
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
           video: false
         });
       }
     }
 
     if (!stream) {
-      throw new Error("Unable to obtain audio stream.");
+      throw new Error("Unable to capture microphone audio stream.");
     }
 
+    // 4. Verify captured audio tracks
+    const audioTracks = stream.getAudioTracks();
+    if (audioTracks.length === 0) {
+      throw new Error("Audio stream captured but contains zero audio tracks.");
+    }
+
+    const primaryTrack = audioTracks[0];
+    if (primaryTrack.readyState !== 'live') {
+      throw new Error(`Microphone track readyState is "${primaryTrack.readyState}" (expected "live").`);
+    }
+
+    primaryTrack.enabled = !this.isMuted;
     this.stream = stream;
 
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    this.audioContext = new AudioCtx({ latencyHint: 'interactive' });
-    const source = this.audioContext.createMediaStreamSource(stream);
+    // 5. Initialize / Resume AudioContext
+    await this.resumeAudioContext();
 
+    if (!this.audioContext) {
+      throw new Error("Failed to initialize Web Audio AudioContext.");
+    }
+
+    // 6. Connect MediaStream to AnalyserNode
+    if (this.sourceNode) {
+      try {
+        this.sourceNode.disconnect();
+      } catch {}
+    }
+
+    this.sourceNode = this.audioContext.createMediaStreamSource(stream);
     this.analyser = this.audioContext.createAnalyser();
-    this.analyser.fftSize = 256;
-    this.analyser.smoothingTimeConstant = 0.3;
+    this.analyser.fftSize = 512;
+    this.analyser.smoothingTimeConstant = 0.2;
+    this.timeDomainBuffer = new Float32Array(this.analyser.fftSize);
 
-    source.connect(this.analyser);
-    // Note: Do NOT connect analyser to destination to avoid phone feedback!
+    // Clean monitoring: connect source -> analyser ONLY. Never connect to destination to prevent speaker feedback!
+    this.sourceNode.connect(this.analyser);
 
+    // 7. Attach track to active WebRTC peer connection sender if already connected
+    if (this.peerConnection) {
+      const senders = this.peerConnection.getSenders();
+      const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+      if (audioSender) {
+        await audioSender.replaceTrack(primaryTrack);
+      } else {
+        this.peerConnection.addTrack(primaryTrack, stream);
+      }
+    }
+
+    console.log(`[ParticipantAudioEngine] Microphone live: "${primaryTrack.label || 'Default Mic'}" (${this.audioContext.state}, ${this.audioContext.sampleRate}Hz)`);
     return stream;
   }
 
@@ -125,6 +222,10 @@ export class ParticipantAudioEngine {
     return this.stream;
   }
 
+  public getAudioContext(): AudioContext | null {
+    return this.audioContext;
+  }
+
   // Switch between 'stage' (uncompressed venue acoustics) and 'conference' (aggressive noise gating)
   public async switchProfile(mode: 'stage' | 'conference') {
     if (!this.stream) return;
@@ -146,37 +247,95 @@ export class ParticipantAudioEngine {
     }
   }
 
-  // Polls real microphone RMS level (0 - 100) and detects voice activity
-  public startMeterLoop(onData: (level: number, isSpeaking: boolean) => void) {
+  /**
+   * Starts high-resolution RMS time-domain meter loop.
+   * Calculates true Root Mean Square from float audio samples: RMS = sqrt(sum(x^2)/N).
+   * Maps to precise logarithmic dBFS (-60 to 0 dB) and normalized meter percentage (0 - 100%).
+   */
+  public startMeterLoop(onData: (data: AudioLevelData) => void) {
+    this.stopMeterLoop();
+
     const check = () => {
+      // If muted or analyser not ready
       if (!this.analyser || this.isMuted) {
-        onData(0, false);
-      } else {
-        const buffer = new Uint8Array(this.analyser.frequencyBinCount);
-        this.analyser.getByteFrequencyData(buffer);
-
-        let sum = 0;
-        let peak = 0;
-        for (let i = 0; i < buffer.length; i++) {
-          const val = buffer[i];
-          sum += val;
-          if (val > peak) peak = val;
-        }
-
-        const avg = sum / buffer.length;
-        // Apply sensitivity and scale to 0-100
-        const scaledLevel = Math.min(100, Math.round((avg / 255) * 100 * 2.2 * this.sensitivity));
-        
-        // VAD threshold
-        const isSpeaking = scaledLevel > 14;
-
-        onData(scaledLevel, isSpeaking);
+        onData({
+          rms: 0,
+          db: -Infinity,
+          levelPct: 0,
+          isSpeaking: false,
+          peak: 0,
+          rawRms: 0
+        });
+        this.animationFrameId = requestAnimationFrame(check);
+        return;
       }
+
+      // Check AudioContext state
+      if (this.audioContext && this.audioContext.state === 'suspended') {
+        onData({
+          rms: 0,
+          db: -Infinity,
+          levelPct: 0,
+          isSpeaking: false,
+          peak: 0,
+          rawRms: 0
+        });
+        this.animationFrameId = requestAnimationFrame(check);
+        return;
+      }
+
+      const buffer = this.timeDomainBuffer || new Float32Array(this.analyser.fftSize);
+      if (typeof this.analyser.getFloatTimeDomainData === 'function') {
+        this.analyser.getFloatTimeDomainData(buffer as any);
+      } else {
+        // Fallback for legacy webkit browsers
+        const byteBuf = new Uint8Array(this.analyser.fftSize);
+        this.analyser.getByteTimeDomainData(byteBuf);
+        for (let i = 0; i < byteBuf.length; i++) {
+          buffer[i] = (byteBuf[i] - 128) / 128.0;
+        }
+      }
+
+      let sumSquares = 0;
+      let peak = 0;
+      const len = buffer.length;
+
+      for (let i = 0; i < len; i++) {
+        const sample = buffer[i];
+        const abs = Math.abs(sample);
+        if (abs > peak) peak = abs;
+        sumSquares += sample * sample;
+      }
+
+      const rawRms = Math.sqrt(sumSquares / len);
+      const scaledRms = rawRms * this.sensitivity;
+
+      let db = -Infinity;
+      let levelPct = 0;
+
+      // Noise floor threshold (ambient silence)
+      if (scaledRms > 0.0002) {
+        db = 20 * Math.log10(scaledRms);
+        // Map -60 dBFS (silence) to 0 dBFS (max peak) -> 0% to 100%
+        levelPct = Math.max(0, Math.min(100, Math.round(((db + 60) / 60) * 100)));
+      }
+
+      // Voice Activity Threshold: > 12% on normalized meter (approx -52 dBFS)
+      const isSpeaking = levelPct > 12;
+
+      onData({
+        rms: scaledRms,
+        db: isFinite(db) ? Math.round(db * 10) / 10 : -Infinity,
+        levelPct,
+        isSpeaking,
+        peak: Math.round(peak * 100) / 100,
+        rawRms: Math.round(rawRms * 1000) / 1000
+      });
 
       this.animationFrameId = requestAnimationFrame(check);
     };
 
-    check();
+    this.animationFrameId = requestAnimationFrame(check);
   }
 
   public stopMeterLoop() {
@@ -184,6 +343,60 @@ export class ParticipantAudioEngine {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
+  }
+
+  /**
+   * Diagnostic inspector for physical device troubleshooting
+   */
+  public async getDiagnostics(): Promise<MicrophoneDiagnostics> {
+    const isSecureContext = typeof window !== 'undefined' ? window.isSecureContext : false;
+    const hasGetUserMedia = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
+    const audioContextState = this.audioContext ? this.audioContext.state : 'none';
+
+    let trackCount = 0;
+    let trackLabel = 'None';
+    let trackReadyState: MediaStreamTrackState | 'none' = 'none';
+    let trackEnabled = false;
+    let trackMuted = false;
+
+    if (this.stream) {
+      const tracks = this.stream.getAudioTracks();
+      trackCount = tracks.length;
+      if (tracks.length > 0) {
+        trackLabel = tracks[0].label || 'Default Microphone';
+        trackReadyState = tracks[0].readyState;
+        trackEnabled = tracks[0].enabled;
+        trackMuted = tracks[0].muted;
+      }
+    }
+
+    const sampleRate = this.audioContext ? this.audioContext.sampleRate : 0;
+
+    let inputDevices: { deviceId: string; label: string }[] = [];
+    if (navigator?.mediaDevices?.enumerateDevices) {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        inputDevices = devices
+          .filter(d => d.kind === 'audioinput')
+          .map((d, idx) => ({
+            deviceId: d.deviceId,
+            label: d.label || `Microphone ${idx + 1}`
+          }));
+      } catch {}
+    }
+
+    return {
+      isSecureContext,
+      hasGetUserMedia,
+      audioContextState,
+      trackCount,
+      trackLabel,
+      trackReadyState,
+      trackEnabled,
+      trackMuted,
+      sampleRate,
+      inputDevices
+    };
   }
 
   // WebRTC initialization as caller (participant -> host) with Opus optimization
@@ -213,7 +426,6 @@ export class ParticipantAudioEngine {
       }
     };
 
-    // Auto-reconnect handling on connection drops
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
         console.warn(`[WebRTC] Participant connection ${pc.connectionState}, standing by for renegotiation...`);
@@ -263,10 +475,18 @@ export class ParticipantAudioEngine {
     }
   }
 
-  // Collect real-time WebRTC network statistics (RTT, Packet Loss, Bitrate)
+  // Collect real-time WebRTC network statistics (RTT, Packet Loss, Bitrate, Bytes Sent)
   public async getStats(): Promise<ClientNetworkStats> {
     if (!this.peerConnection) {
-      return { rttMs: 0, packetLossPct: 0, jitterMs: 0, bitrateKbps: 0, candidateType: 'none' };
+      return { 
+        rttMs: 0, 
+        packetLossPct: 0, 
+        jitterMs: 0, 
+        bitrateKbps: 0, 
+        candidateType: 'none',
+        bytesSent: 0,
+        packetsSent: 0
+      };
     }
     try {
       const stats = await this.peerConnection.getStats();
@@ -275,6 +495,8 @@ export class ParticipantAudioEngine {
       let jitter = 0;
       let bitrate = 0;
       let candType = 'host';
+      let bytesSent = 0;
+      let packetsSent = 0;
 
       stats.forEach((report: any) => {
         if (report.type === 'candidate-pair' && (report.state === 'succeeded' || report.nominated)) {
@@ -289,15 +511,18 @@ export class ParticipantAudioEngine {
         }
         if (report.type === 'outbound-rtp' && report.kind === 'audio') {
           const now = report.timestamp;
-          const bytes = report.bytesSent;
+          bytesSent = report.bytesSent || 0;
+          packetsSent = report.packetsSent || 0;
+
           if (this.lastStatsTimestamp && this.lastBytesSent) {
             const timeDiff = (now - this.lastStatsTimestamp) / 1000;
             if (timeDiff > 0) {
-              bitrate = Math.round(((bytes - this.lastBytesSent) * 8) / (timeDiff * 1000));
+              bitrate = Math.round(((bytesSent - this.lastBytesSent) * 8) / (timeDiff * 1000));
             }
           }
           this.lastStatsTimestamp = now;
-          this.lastBytesSent = bytes;
+          this.lastBytesSent = bytesSent;
+          this.totalPacketsSent = packetsSent;
         }
       });
 
@@ -306,10 +531,20 @@ export class ParticipantAudioEngine {
         packetLossPct: packetLoss,
         jitterMs: jitter,
         bitrateKbps: Math.max(0, bitrate),
-        candidateType: candType
+        candidateType: candType,
+        bytesSent,
+        packetsSent
       };
     } catch (e) {
-      return { rttMs: 0, packetLossPct: 0, jitterMs: 0, bitrateKbps: 0, candidateType: 'none' };
+      return { 
+        rttMs: 0, 
+        packetLossPct: 0, 
+        jitterMs: 0, 
+        bitrateKbps: 0, 
+        candidateType: 'none',
+        bytesSent: 0,
+        packetsSent: 0
+      };
     }
   }
 
@@ -323,8 +558,10 @@ export class ParticipantAudioEngine {
       this.stream.getTracks().forEach(t => t.stop());
       this.stream = null;
     }
-    if (this.audioContext) {
-      this.audioContext.close();
+    if (this.audioContext && this.audioContext.state !== 'closed') {
+      try {
+        this.audioContext.close();
+      } catch {}
       this.audioContext = null;
     }
   }

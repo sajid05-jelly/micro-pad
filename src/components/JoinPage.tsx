@@ -61,17 +61,16 @@ export const JoinPage: React.FC<JoinPageProps> = ({
             audio: {
               echoCancellation: false,
               noiseSuppression: false,
-              autoGainControl: true,
-              channelCount: 1,
-              sampleRate: 48000
+              autoGainControl: true
             },
             video: false
           });
         } catch {
-          stream = await getUserMedia({
-            audio: { autoGainControl: true },
-            video: false
-          });
+          try {
+            stream = await getUserMedia({ audio: true, video: false });
+          } catch (innerErr) {
+            console.warn('[JoinPage] Microphone capture deferred to mobile transmitter:', innerErr);
+          }
         }
       }
 

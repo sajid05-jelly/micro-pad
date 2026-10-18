@@ -7,6 +7,7 @@ interface RetroVUMeterProps {
   showLabels?: boolean;
   isPeak?: boolean;
   label?: string;
+  numericValue?: string;
 }
 
 export const RetroVUMeter: React.FC<RetroVUMeterProps> = ({
@@ -15,7 +16,8 @@ export const RetroVUMeter: React.FC<RetroVUMeterProps> = ({
   height = 'h-4',
   showLabels = false,
   isPeak = false,
-  label
+  label,
+  numericValue
 }) => {
   const [peakHold, setPeakHold] = useState(0);
 
@@ -38,7 +40,7 @@ export const RetroVUMeter: React.FC<RetroVUMeterProps> = ({
       {label && (
         <div className="flex justify-between items-center text-[10px] text-text-secondary uppercase tracking-widest">
           <span>{label}</span>
-          <span className="font-bold">{level > 0 ? `-${Math.round((100 - level) * 0.4)} dB` : '-INF dB'}</span>
+          <span className="font-bold">{numericValue ?? (level > 0 ? `-${Math.round((100 - level) * 0.4)} dB` : '-INF dB')}</span>
         </div>
       )}
 
