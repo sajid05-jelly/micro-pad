@@ -305,8 +305,29 @@ setInterval(() => {
   }
 }, 100);
 
-// Active public HTTPS tunnel URL (if using Cloudflare, ngrok, or localtunnel)
-let activeTunnelUrl: string | null = process.env.TUNNEL_URL || process.env.PUBLIC_URL || null;
+// Active public HTTPS tunnel state (backed by heartbeat and probe verification)
+interface TunnelState {
+  url: string;
+  lastHeartbeat: number;
+  verified: boolean;
+}
+
+let activeTunnel: TunnelState | null = (process.env.TUNNEL_URL || process.env.PUBLIC_URL)
+  ? { url: (process.env.TUNNEL_URL || process.env.PUBLIC_URL)!.trim().replace(/\/+$/, ''), lastHeartbeat: Date.now(), verified: true }
+  : null;
+
+// Tunnel health watchdog: auto-decommission stale tunnels if no heartbeat for 25s
+setInterval(() => {
+  if (activeTunnel && (Date.now() - activeTunnel.lastHeartbeat > 25000)) {
+    console.log(`[MICRO PAD] Tunnel auto-expired (no heartbeat in 25s): ${activeTunnel.url}`);
+    activeTunnel = null;
+    io.emit('system:ip_info', {
+      localIp: getLocalIp(),
+      clientPort: 5173,
+      tunnelUrl: null
+    });
+  }
+}, 5000);
 
 // Root route helper: redirects browsers accessing port 3001 directly to the Vite frontend on port 5173
 app.get('/', (_req, res) => {
@@ -317,7 +338,7 @@ app.get('/', (_req, res) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MICRO PAD // Broadcast Console</title>
-  <meta http-equiv="refresh" content="2;url=https://${currentIp}:5173/">
+  <meta http-equiv="refresh" content="2;url=http://${currentIp}:5173/">
   <style>
     body { background: #0c0d0e; color: #f2f5f8; font-family: 'IBM Plex Mono', monospace, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 20px; text-align: center; }
     .card { background: #16181b; border: 2px solid #282a2e; padding: 32px; border-radius: 4px; max-width: 480px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
@@ -331,7 +352,7 @@ app.get('/', (_req, res) => {
   <div class="card">
     <h1>MICRO PAD // BROADCAST GATEWAY</h1>
     <p>Redirecting to Control Room console...</p>
-    <a class="btn" href="https://${currentIp}:5173/">OPEN CONSOLE (PORT 5173) &rarr;</a>
+    <a class="btn" href="http://${currentIp}:5173/">OPEN CONSOLE (PORT 5173) &rarr;</a>
   </div>
 </body>
 </html>`);
@@ -345,16 +366,80 @@ app.get('/api/health', (_req, res) => {
 // Register or update secure public tunnel URL dynamically
 app.post('/api/tunnel', (req, res) => {
   const { url } = req.body || {};
-  if (typeof url === 'string') {
-    activeTunnelUrl = url.trim().replace(/\/+$/, '');
+  if (typeof url === 'string' && url.trim().length > 0) {
+    const cleaned = url.trim().replace(/\/+$/, '');
+    activeTunnel = {
+      url: cleaned,
+      lastHeartbeat: Date.now(),
+      verified: true
+    };
     io.emit('system:ip_info', {
       localIp: getLocalIp(),
       clientPort: 5173,
-      tunnelUrl: activeTunnelUrl
+      tunnelUrl: activeTunnel.url
     });
-    console.log(`[MICRO PAD] Registered Secure Public Tunnel: ${activeTunnelUrl}`);
+    console.log(`[MICRO PAD] Registered Secure Public Tunnel: ${activeTunnel.url}`);
   }
-  res.json({ status: 'OK', tunnelUrl: activeTunnelUrl });
+  res.json({ status: 'OK', tunnelUrl: activeTunnel ? activeTunnel.url : null });
+});
+
+// Heartbeat endpoint to maintain active tunnel freshness
+app.post('/api/tunnel/heartbeat', (req, res) => {
+  const { url } = req.body || {};
+  if (activeTunnel) {
+    if (!url || activeTunnel.url === url.trim().replace(/\/+$/, '')) {
+      activeTunnel.lastHeartbeat = Date.now();
+      return res.json({ status: 'OK', active: true });
+    }
+  }
+  res.json({ status: 'OFFLINE', active: false });
+});
+
+// Decommission active tunnel immediately on process shutdown
+app.delete('/api/tunnel', (_req, res) => {
+  if (activeTunnel) {
+    console.log(`[MICRO PAD] Tunnel decommissioned: ${activeTunnel.url}`);
+    activeTunnel = null;
+    io.emit('system:ip_info', {
+      localIp: getLocalIp(),
+      clientPort: 5173,
+      tunnelUrl: null
+    });
+  }
+  res.json({ status: 'OK', tunnelUrl: null });
+});
+
+// Live verification probe for candidate tunnel URL
+app.get('/api/tunnel/verify', async (req, res) => {
+  const candidateUrl = (req.query.url as string) || (activeTunnel ? activeTunnel.url : null);
+  if (!candidateUrl) {
+    return res.json({ reachable: false, error: 'NO_URL_SPECIFIED' });
+  }
+
+  try {
+    const parsed = new URL(candidateUrl);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+
+    const target = `${parsed.origin}/api/health`;
+    const response = await fetch(target, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (response.ok) {
+      if (activeTunnel && activeTunnel.url === parsed.origin) {
+        activeTunnel.verified = true;
+        activeTunnel.lastHeartbeat = Date.now();
+      }
+      return res.json({ reachable: true, status: response.status, url: parsed.origin });
+    } else {
+      return res.json({ reachable: false, status: response.status, error: `HTTP_${response.status}` });
+    }
+  } catch (err: any) {
+    return res.json({
+      reachable: false,
+      error: err.name === 'AbortError' ? 'TIMEOUT_3500MS' : (err.code || err.message || 'ERR_NAME_NOT_RESOLVED')
+    });
+  }
 });
 
 app.get('/api/info', (_req, res) => {
@@ -365,7 +450,7 @@ app.get('/api/info', (_req, res) => {
     localIp: currentIp,
     port: PORT,
     clientPort: 5173,
-    tunnelUrl: activeTunnelUrl,
+    tunnelUrl: activeTunnel ? activeTunnel.url : null,
     activeSessions: Object.keys(sessions).length,
     sessions: Object.values(sessions).map(s => ({
       id: s.sessionId,
@@ -386,7 +471,7 @@ io.on('connection', (socket: Socket) => {
   socket.emit('system:ip_info', { 
     localIp: getLocalIp(),
     clientPort: 5173,
-    tunnelUrl: activeTunnelUrl
+    tunnelUrl: activeTunnel ? activeTunnel.url : null
   });
 
   // --- HOST ADMIN REGISTRATION ---
@@ -420,7 +505,7 @@ io.on('connection', (socket: Socket) => {
     socket.join(userSessionId);
     logEvent(sessions[userSessionId], 'INFO', 'ADMIN CONSOLE CONNECTED', `Admin socket assigned: ${socket.id.substring(0, 6)}`);
     socket.emit('session:state', sessions[userSessionId]);
-    socket.emit('system:ip_info', { localIp, clientPort: 5173, tunnelUrl: activeTunnelUrl });
+    socket.emit('system:ip_info', { localIp, clientPort: 5173, tunnelUrl: activeTunnel ? activeTunnel.url : null });
   });
 
   // --- PARTICIPANT JOIN ---
@@ -709,14 +794,14 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`[MICRO PAD] BROADCAST SYSTEM READY // RETRO HARDWARE CONSOLE`);
   console.log(`======================================================================`);
   console.log(`1. HOST CONTROL ROOM (Laptop):`);
-  console.log(`   ➜ https://localhost:5173/`);
+  console.log(`   ➜ http://localhost:5173/`);
   console.log(`\n2. MOBILE PARTICIPANTS (Scan QR or open directly on phone):`);
-  console.log(`   ➜ https://${localIp}:5173/`);
+  console.log(`   ➜ http://${localIp}:5173/`);
   console.log(`\n3. BACKEND SIGNALING & ARBITRATION SERVER:`);
   console.log(`   ➜ http://${localIp}:${PORT}/`);
-  if (activeTunnelUrl) {
+  if (activeTunnel) {
     console.log(`\n4. PUBLIC SECURE TUNNEL (Zero Warning for iOS / Android):`);
-    console.log(`   ➜ ${activeTunnelUrl}`);
+    console.log(`   ➜ ${activeTunnel.url}`);
   }
   console.log(`\nℹ NETWORK / HOTSPOT ADVISORY:`);
   console.log(`   • Phone and laptop must be on the same Wi-Fi / Hotspot.`);

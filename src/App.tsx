@@ -40,14 +40,12 @@ const getInitialState = () => {
   const assignedMicLabel = paramMic || (assignedChannel ? `MIC 0${assignedChannel}` : undefined);
 
   let role: 'admin' | 'mic' | 'join';
-  if (paramRole === 'mic') {
-    role = paramName ? 'mic' : 'join';
-  } else if (paramRole === 'join') {
+  if (window.location.pathname.startsWith('/join') || paramRole === 'join' || paramChannel !== null || paramMic !== null) {
     role = 'join';
+  } else if (paramRole === 'mic') {
+    role = paramName ? 'mic' : 'join';
   } else if (paramRole === 'admin') {
     role = 'admin';
-  } else if (window.location.pathname.startsWith('/join')) {
-    role = 'join';
   } else if (isMobileDevice()) {
     role = 'join';
   } else {
@@ -99,9 +97,7 @@ export default function App() {
         if (data.localIp && data.localIp !== 'localhost' && !data.localIp.startsWith('169.254.')) {
           setLocalIp(data.localIp);
         }
-        if (data.tunnelUrl) {
-          setTunnelUrl(data.tunnelUrl);
-        }
+        setTunnelUrl(data.tunnelUrl || null);
       })
       .catch(err => {
         console.warn('Could not reach /api/info endpoint:', err);
@@ -153,13 +149,11 @@ export default function App() {
       setConnectionError('Broadcast host unreachable. Please verify Wi-Fi connection.');
     });
 
-    newSocket.on('system:ip_info', ({ localIp: newIp, tunnelUrl: newTunnel }: { localIp: string; tunnelUrl?: string }) => {
+    newSocket.on('system:ip_info', ({ localIp: newIp, tunnelUrl: newTunnel }: { localIp: string; tunnelUrl?: string | null }) => {
       if (newIp && newIp !== 'localhost' && !newIp.startsWith('169.254.')) {
         setLocalIp(newIp);
       }
-      if (newTunnel) {
-        setTunnelUrl(newTunnel);
-      }
+      setTunnelUrl(newTunnel || null);
     });
 
     return newSocket;

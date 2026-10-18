@@ -125,8 +125,8 @@ async function runMobileConnectionTest() {
     });
   });
 
-  // 7. Test Secure Public Tunnel registration and broadcast
-  console.log('\n7. Testing Secure Public Tunnel registration (/api/tunnel)...');
+  // 7. Test Secure Public Tunnel registration, probe verification, and heartbeat
+  console.log('\n7. Testing Secure Public Tunnel registration and probe verification...');
   const tunnelRes = await fetch('http://127.0.0.1:3001/api/tunnel', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -146,7 +146,37 @@ async function runMobileConnectionTest() {
   }
   console.log('   [PASS] /api/info reflects active public tunnel URL');
 
-  // 8. Test Join URL generator logic (Never localhost or 127.0.0.1, preserves session and channel)
+  // Verify /api/tunnel/verify correctly catches unreachable / non-existent domains
+  console.log('   Testing live reachability probe on dead domain...');
+  const probeRes = await fetch('http://127.0.0.1:3001/api/tunnel/verify?url=https://micropad-stage.trycloudflare.com');
+  const probeData = await probeRes.json();
+  if (probeData.reachable !== false) {
+    throw new Error('Unresolved domain should fail reachability probe');
+  }
+  console.log(`   [PASS] Reachability probe detected dead tunnel: reachable=${probeData.reachable}, error=${probeData.error}`);
+
+  // Test heartbeat endpoint
+  const heartbeatRes = await fetch('http://127.0.0.1:3001/api/tunnel/heartbeat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: 'https://micropad-stage.trycloudflare.com' })
+  });
+  const heartbeatData = await heartbeatRes.json();
+  if (!heartbeatData.active) {
+    throw new Error('Heartbeat should return active: true for registered tunnel');
+  }
+  console.log('   [PASS] Tunnel heartbeat accepted');
+
+  // Clean up tunnel to prevent leaving dead domain in server state
+  await fetch('http://127.0.0.1:3001/api/tunnel', { method: 'DELETE' });
+  const clearedInfoRes = await fetch('http://127.0.0.1:3001/api/info');
+  const clearedInfo = await clearedInfoRes.json();
+  if (clearedInfo.tunnelUrl !== null) {
+    throw new Error('Tunnel was not cleared after DELETE /api/tunnel');
+  }
+  console.log('   [PASS] Test tunnel successfully cleared (no stale domain left)');
+
+  // 8. Test Join URL generator logic (Never localhost or 127.0.0.1, preserves session, role and channel)
   console.log('\n8. Validating Mobile Join URL generation (No localhost, valid protocol, preserves params)...');
   function buildJoinUrl(baseHost: string, sessionId: string, channelNumber?: number): string {
     const params = new URLSearchParams();
@@ -156,20 +186,20 @@ async function runMobileConnectionTest() {
       params.set('channel', String(channelNumber));
       params.set('mic', `MIC ${String(channelNumber).padStart(2, '0')}`);
     }
-    return `${baseHost}/?${params.toString()}`;
+    return `${baseHost}/join?${params.toString()}`;
   }
 
-  const lanJoinUrl = buildJoinUrl(`https://${info.localIp}:5173`, 'MICRO-01', 1);
+  const lanJoinUrl = buildJoinUrl(`http://${info.localIp}:5173`, 'MICRO-01', 1);
   if (lanJoinUrl.includes('localhost') || lanJoinUrl.includes('127.0.0.1')) {
     throw new Error('Mobile join URL must never contain localhost or 127.0.0.1');
   }
-  if (!lanJoinUrl.includes('role=join') || !lanJoinUrl.includes('session=MICRO-01') || !lanJoinUrl.includes('channel=1')) {
+  if (!lanJoinUrl.includes('/join?') || !lanJoinUrl.includes('role=join') || !lanJoinUrl.includes('session=MICRO-01') || !lanJoinUrl.includes('channel=1')) {
     throw new Error(`Join URL missing required parameters: ${lanJoinUrl}`);
   }
   console.log(`   [PASS] Valid LAN Join URL: ${lanJoinUrl}`);
 
-  const tunnelJoinUrl = buildJoinUrl('https://micropad-stage.trycloudflare.com', 'MICRO-01', 2);
-  if (!tunnelJoinUrl.startsWith('https://micropad-stage.trycloudflare.com/?') || !tunnelJoinUrl.includes('channel=2')) {
+  const tunnelJoinUrl = buildJoinUrl('https://custom-live.trycloudflare.com', 'MICRO-01', 2);
+  if (!tunnelJoinUrl.startsWith('https://custom-live.trycloudflare.com/join?') || !tunnelJoinUrl.includes('channel=2')) {
     throw new Error(`Tunnel join URL invalid: ${tunnelJoinUrl}`);
   }
   console.log(`   [PASS] Valid Tunnel Join URL: ${tunnelJoinUrl}`);

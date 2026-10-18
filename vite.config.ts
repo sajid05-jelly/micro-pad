@@ -2,12 +2,12 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 
-const isNoSsl = process.env.VITE_NO_SSL === 'true' || process.env.TUNNEL === 'true';
+const isSslEnabled = process.env.VITE_SSL === 'true';
 
 export default defineConfig({
   plugins: [
     react(),
-    ...(!isNoSsl ? [basicSsl()] : [])
+    ...(isSslEnabled ? [basicSsl()] : [])
   ],
   server: {
     host: '0.0.0.0',
