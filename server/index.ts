@@ -308,6 +308,35 @@ setInterval(() => {
 // Active public HTTPS tunnel URL (if using Cloudflare, ngrok, or localtunnel)
 let activeTunnelUrl: string | null = process.env.TUNNEL_URL || process.env.PUBLIC_URL || null;
 
+// Root route helper: redirects browsers accessing port 3001 directly to the Vite frontend on port 5173
+app.get('/', (_req, res) => {
+  const currentIp = getLocalIp();
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MICRO PAD // Broadcast Console</title>
+  <meta http-equiv="refresh" content="2;url=https://${currentIp}:5173/">
+  <style>
+    body { background: #0c0d0e; color: #f2f5f8; font-family: 'IBM Plex Mono', monospace, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 20px; text-align: center; }
+    .card { background: #16181b; border: 2px solid #282a2e; padding: 32px; border-radius: 4px; max-width: 480px; width: 100%; box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    h1 { font-size: 20px; letter-spacing: 2px; margin-bottom: 8px; }
+    p { color: #8a919e; font-size: 13px; line-height: 1.6; }
+    .btn { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #fff; color: #000; font-weight: bold; text-decoration: none; border: 1px solid #fff; text-transform: uppercase; letter-spacing: 1px; font-size: 12px; }
+    .btn:hover { background: #e0e0e0; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>MICRO PAD // BROADCAST GATEWAY</h1>
+    <p>Redirecting to Control Room console...</p>
+    <a class="btn" href="https://${currentIp}:5173/">OPEN CONSOLE (PORT 5173) &rarr;</a>
+  </div>
+</body>
+</html>`);
+});
+
 // API health and info endpoints for local network discovery
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'OK', timestamp: Date.now() });
@@ -676,9 +705,23 @@ io.on('connection', (socket: Socket) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`====================================================`);
-  console.log(`[MICRO PAD] RETRO BROADCAST SERVER LISTENING`);
-  console.log(`-> Local URL:       http://localhost:${PORT}`);
-  console.log(`-> LAN Wi-Fi URL:   http://${localIp}:${PORT}`);
-  console.log(`====================================================`);
+  console.log(`\n======================================================================`);
+  console.log(`[MICRO PAD] BROADCAST SYSTEM READY // RETRO HARDWARE CONSOLE`);
+  console.log(`======================================================================`);
+  console.log(`1. HOST CONTROL ROOM (Laptop):`);
+  console.log(`   ➜ https://localhost:5173/`);
+  console.log(`\n2. MOBILE PARTICIPANTS (Scan QR or open directly on phone):`);
+  console.log(`   ➜ https://${localIp}:5173/`);
+  console.log(`\n3. BACKEND SIGNALING & ARBITRATION SERVER:`);
+  console.log(`   ➜ http://${localIp}:${PORT}/`);
+  if (activeTunnelUrl) {
+    console.log(`\n4. PUBLIC SECURE TUNNEL (Zero Warning for iOS / Android):`);
+    console.log(`   ➜ ${activeTunnelUrl}`);
+  }
+  console.log(`\nℹ NETWORK / HOTSPOT ADVISORY:`);
+  console.log(`   • Phone and laptop must be on the same Wi-Fi / Hotspot.`);
+  console.log(`   • In Windows Settings > Network > Wi-Fi, ensure your hotspot is`);
+  console.log(`     set to "Private network" so Windows Firewall allows LAN connections.`);
+  console.log(`   • For automated zero-warning access without firewall changes: npm run dev:tunnel`);
+  console.log(`======================================================================\n`);
 });
