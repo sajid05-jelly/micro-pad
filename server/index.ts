@@ -386,11 +386,19 @@ app.post('/api/tunnel', (req, res) => {
 // Heartbeat endpoint to maintain active tunnel freshness
 app.post('/api/tunnel/heartbeat', (req, res) => {
   const { url } = req.body || {};
-  if (activeTunnel) {
-    if (!url || activeTunnel.url === url.trim().replace(/\/+$/, '')) {
-      activeTunnel.lastHeartbeat = Date.now();
+  if (typeof url === 'string' && url.trim().length > 0) {
+    const cleaned = url.trim().replace(/\/+$/, '');
+    if (!activeTunnel || activeTunnel.url === cleaned) {
+      activeTunnel = {
+        url: cleaned,
+        lastHeartbeat: Date.now(),
+        verified: true
+      };
       return res.json({ status: 'OK', active: true });
     }
+  } else if (activeTunnel) {
+    activeTunnel.lastHeartbeat = Date.now();
+    return res.json({ status: 'OK', active: true });
   }
   res.json({ status: 'OFFLINE', active: false });
 });

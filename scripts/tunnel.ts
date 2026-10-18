@@ -29,7 +29,17 @@ function sendHeartbeat() {
       'Content-Length': Buffer.byteLength(postData)
     }
   }, (res) => {
-    res.on('data', () => {});
+    let body = '';
+    res.on('data', (chunk) => { body += chunk; });
+    res.on('end', () => {
+      try {
+        const json = JSON.parse(body);
+        if (json.active === false && currentTunnelUrl) {
+          registered = false;
+          registerTunnelWithServer(currentTunnelUrl);
+        }
+      } catch {}
+    });
   });
   req.on('error', () => {});
   req.write(postData);
