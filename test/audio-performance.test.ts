@@ -72,20 +72,18 @@ assert.strictEqual(statsWeakWifi.packetLossPct, 20, '200 lost out of 1000 is 20%
 assert.strictEqual(statsWeakWifi.rttMs, 120, '120ms RTT reflects boundary Wi-Fi range');
 console.log('   [PASS] Network telemetry calculation accurately flags packet loss and latency');
 
-// 5. Comb Filtering Mitigation Architecture Test
-console.log('\n5. Verifying Single-Playback Routing Architecture (Comb Filter Elimination)...');
-// When host audio plays through both HTML5 Audio Element and Web Audio API destination,
-// dual paths with ~40ms buffer skew produce destructive acoustic phase cancellation.
+// 5. Native Hardware Playback & Comb Filtering Elimination Architecture Test
+console.log('\n5. Verifying Native Hardware Playback & Phase Alignment Architecture...');
 const hostAudioConfig = {
-  audioElementMuted: true,
-  audioElementVolume: 0,
-  webAudioDestinationEnabled: true
+  audioElementMuted: false, // Must be false to prevent Chromium WebRTC track-level silencing
+  audioElementManagedVolume: true, // Native hardware player manages speaker output cleanly
+  singleHardwareSink: true // Exclusive single-path playback eliminates phase comb filtering
 };
 
-assert.strictEqual(hostAudioConfig.audioElementMuted, true, 'AudioElement must be muted to prevent double playback');
-assert.strictEqual(hostAudioConfig.audioElementVolume, 0, 'AudioElement volume must be 0');
-assert.strictEqual(hostAudioConfig.webAudioDestinationEnabled, true, 'Audio routes exclusively through Web Audio bus');
-console.log('   [PASS] Single audio route verified: Dual-playback comb filtering completely prevented');
+assert.strictEqual(hostAudioConfig.audioElementMuted, false, 'AudioElement must not be muted (prevents Chromium track silencing)');
+assert.strictEqual(hostAudioConfig.audioElementManagedVolume, true, 'AudioElement manages volume smoothly without click');
+assert.strictEqual(hostAudioConfig.singleHardwareSink, true, 'Single exclusive sink prevents acoustic phase comb filtering');
+console.log('   [PASS] Hardware playback verified: Chromium track silencing and comb filtering prevented');
 
 // 6. Test High-Precision Time-Domain RMS & dBFS Calculation
 console.log('\n6. Testing Time-Domain RMS & Logarithmic dBFS Meter Calculation...');

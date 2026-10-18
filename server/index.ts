@@ -512,6 +512,18 @@ io.on('connection', (socket: Socket) => {
 
     socket.join(userSessionId);
     logEvent(sessions[userSessionId], 'INFO', 'ADMIN CONSOLE CONNECTED', `Admin socket assigned: ${socket.id.substring(0, 6)}`);
+
+    // Auto-route first ready participant if floor is empty
+    if (!sessions[userSessionId].activeSpeakerId) {
+      const readyP = Object.values(sessions[userSessionId].participants).find(p => p.state === 'READY');
+      if (readyP) {
+        sessions[userSessionId].activeSpeakerId = readyP.id;
+        sessions[userSessionId].selectionReason = 'FIRST_ELIGIBLE_SPEAKER';
+        logEvent(sessions[userSessionId], 'ACTION', `BUS AUTO-ENGAGED -> CH-${String(readyP.channelNumber).padStart(2, '0')}`, `${readyP.name} active on main bus`);
+      }
+    }
+
+    updateParticipantStates(sessions[userSessionId]);
     socket.emit('session:state', sessions[userSessionId]);
     socket.emit('system:ip_info', { localIp, clientPort: 5173, tunnelUrl: activeTunnel ? activeTunnel.url : null });
   });
@@ -600,8 +612,8 @@ io.on('connection', (socket: Socket) => {
       const p = session.participants[participantId];
       p.state = state;
 
-      // Auto-route first ready mic if in manual mode and no speaker is selected yet
-      if (session.mode === 'manual' && !session.activeSpeakerId && state === 'READY') {
+      // Auto-route first ready mic if no speaker is selected yet
+      if (!session.activeSpeakerId && state === 'READY') {
         session.activeSpeakerId = p.id;
         session.selectionReason = 'FIRST_ELIGIBLE_SPEAKER';
         logEvent(session, 'ACTION', `BUS AUTO-ENGAGED -> CH-${String(p.channelNumber).padStart(2, '0')}`, `${p.name} active on main bus`);
@@ -634,6 +646,11 @@ io.on('connection', (socket: Socket) => {
           level: p.audioLevel,
           isSpeaking: p.isSpeaking
         });
+      }
+
+      // Instantaneous auto-arbitration evaluation on speech state change
+      if (sessions[userSessionId].mode === 'auto' && prevSpeaking !== p.isSpeaking) {
+        evaluateAutoArbitration(userSessionId);
       }
     }
   });

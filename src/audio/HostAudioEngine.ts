@@ -31,10 +31,12 @@ export class HostAudioEngine {
     source: MediaStreamAudioSourceNode;
     gain: GainNode;
     analyser: AnalyserNode;
+    audioElement?: HTMLAudioElement;
     stream: MediaStream;
   }> = new Map();
 
   private channelTrim: Map<string, number> = new Map();
+  private selectedSinkId = 'default';
   private isEmergencyStopped = false;
   private isMuteAll = false;
   private activeSpeakerId: string | null = null;
@@ -83,19 +85,45 @@ export class HostAudioEngine {
     return this.audioContext;
   }
 
+  // Resume all audio output sinks (both Web Audio and HTMLAudioElement)
+  public async resumeAll(): Promise<void> {
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      await this.audioContext.resume().catch(() => {});
+    }
+    for (const nodes of this.channelNodes.values()) {
+      if (nodes.audioElement && nodes.audioElement.paused) {
+        nodes.audioElement.play().catch(() => {});
+      }
+    }
+  }
+
   // Set physical output device (supports Bluetooth speaker vs Wired 3.5mm AUX jack)
   public async setOutputDevice(deviceId: string): Promise<boolean> {
-    if (!this.audioContext) return false;
-    const ctx = this.audioContext as any;
-    if (typeof ctx.setSinkId === 'function') {
+    this.selectedSinkId = deviceId;
+    const sinkId = deviceId === 'default' ? '' : deviceId;
+    let anySuccess = false;
+
+    if (this.audioContext && typeof (this.audioContext as any).setSinkId === 'function') {
       try {
-        await ctx.setSinkId(deviceId === 'default' ? '' : deviceId);
-        return true;
+        await (this.audioContext as any).setSinkId(sinkId);
+        anySuccess = true;
       } catch (e) {
         console.warn('AudioContext.setSinkId failed:', e);
       }
     }
-    return false;
+
+    for (const nodes of this.channelNodes.values()) {
+      if (nodes.audioElement && typeof (nodes.audioElement as any).setSinkId === 'function') {
+        try {
+          await (nodes.audioElement as any).setSinkId(sinkId);
+          anySuccess = true;
+        } catch (e) {
+          console.warn('AudioElement.setSinkId failed:', e);
+        }
+      }
+    }
+
+    return anySuccess;
   }
 
   // Play retro 440Hz calibration test chime (2-pip broadcast signal)
@@ -135,23 +163,64 @@ export class HostAudioEngine {
 
   // Register remote audio stream from WebRTC
   public attachParticipantStream(participantId: string, stream: MediaStream) {
-    if (!this.audioContext || !this.masterGain) return;
+    if (!this.audioContext || !this.masterGain) {
+      this.initAudio().catch(() => {});
+    }
 
     // Clean up existing nodes if re-attaching
     this.detachParticipantStream(participantId);
 
-    const source = this.audioContext.createMediaStreamSource(stream);
-    const gain = this.audioContext.createGain();
-    const analyser = this.audioContext.createAnalyser();
-    analyser.fftSize = 64;
-    analyser.smoothingTimeConstant = 0.4;
+    // 1. Direct hardware speaker playback via native HTMLAudioElement (required by Chromium to pull remote WebRTC packets)
+    let audioElement: HTMLAudioElement | undefined;
+    if (typeof document !== 'undefined') {
+      audioElement = document.createElement('audio');
+      audioElement.srcObject = stream;
+      audioElement.autoplay = true;
+      audioElement.muted = false; // NEVER set muted=true in Chromium as it mutes the underlying track!
+      audioElement.volume = 0.0; // Managed strictly by updateRouting()
+      audioElement.style.position = 'fixed';
+      audioElement.style.pointerEvents = 'none';
+      audioElement.style.opacity = '0';
+      audioElement.style.width = '0px';
+      audioElement.style.height = '0px';
 
-    // Start closed
-    gain.gain.setValueAtTime(0.0, this.audioContext.currentTime);
+      if (typeof (audioElement as any).setSinkId === 'function' && this.selectedSinkId !== 'default') {
+        (audioElement as any).setSinkId(this.selectedSinkId).catch(() => {});
+      }
 
-    source.connect(gain);
-    gain.connect(analyser);
-    gain.connect(this.masterGain);
+      document.body.appendChild(audioElement);
+      const playPromise = audioElement.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn('[HostAudio] Native audio play deferred pending user gesture:', err);
+        });
+      }
+    }
+
+    // 2. Web Audio Analyser & Routing Nodes
+    let source: MediaStreamAudioSourceNode | null = null;
+    let gain: GainNode | null = null;
+    let analyser: AnalyserNode | null = null;
+
+    if (this.audioContext && this.masterGain) {
+      try {
+        source = this.audioContext.createMediaStreamSource(stream);
+        gain = this.audioContext.createGain();
+        analyser = this.audioContext.createAnalyser();
+        analyser.fftSize = 64;
+        analyser.smoothingTimeConstant = 0.4;
+
+        // Start closed
+        gain.gain.setValueAtTime(0.0, this.audioContext.currentTime);
+
+        source.connect(gain);
+        gain.connect(analyser);
+        // Connect to masterGain so VU meter reflects active participant
+        gain.connect(this.masterGain);
+      } catch (e) {
+        console.warn('[HostAudio] WebAudio node creation error:', e);
+      }
+    }
 
     // Listen to track mute/unmute events from mobile
     const track = stream.getAudioTracks()[0];
@@ -164,9 +233,18 @@ export class HostAudioEngine {
       };
     }
 
-    // Direct single-point audio routing: source -> gain -> analyser -> masterGain -> compressor -> destination
-    // No dummy HTMLAudioElement with muted=true, which in Chromium causes the underlying WebRTC track to be muted!
-    this.channelNodes.set(participantId, { source, gain, analyser, stream });
+    if (source && gain && analyser) {
+      this.channelNodes.set(participantId, { source, gain, analyser, audioElement, stream });
+    } else if (audioElement) {
+      this.channelNodes.set(participantId, {
+        source: null as any,
+        gain: null as any,
+        analyser: null as any,
+        audioElement,
+        stream
+      });
+    }
+
     this.updateRouting();
   }
 
@@ -174,12 +252,19 @@ export class HostAudioEngine {
     const existing = this.channelNodes.get(participantId);
     if (existing) {
       try {
-        existing.source.disconnect();
-        existing.gain.disconnect();
-        existing.analyser.disconnect();
-      } catch (e) {
-        // ignore already disconnected
+        if (existing.source) existing.source.disconnect();
+        if (existing.gain) existing.gain.disconnect();
+        if (existing.analyser) existing.analyser.disconnect();
+      } catch (e) {}
+
+      if (existing.audioElement) {
+        try {
+          existing.audioElement.pause();
+          existing.audioElement.srcObject = null;
+          existing.audioElement.remove();
+        } catch (e) {}
       }
+
       this.channelNodes.delete(participantId);
     }
   }
@@ -210,13 +295,11 @@ export class HostAudioEngine {
   }
 
   public updateRouting() {
-    if (!this.audioContext) return;
-
-    if (this.audioContext.state === 'suspended') {
+    if (this.audioContext && this.audioContext.state === 'suspended') {
       this.audioContext.resume().catch(() => {});
     }
 
-    const now = this.audioContext.currentTime;
+    const now = this.audioContext ? this.audioContext.currentTime : 0;
 
     for (const [id, nodes] of this.channelNodes.entries()) {
       const isIndividuallyMuted = this.mutedParticipantIds.has(id);
@@ -226,15 +309,25 @@ export class HostAudioEngine {
                         (this.activeSpeakerId === id);
 
       const trim = this.channelTrim.get(id) || 1.0;
-      const targetGain = isAudible ? (1.0 * trim) : 0.0;
+      const targetGain = isAudible ? Math.min(1.0, 1.0 * trim) : 0.0;
 
-      // Clickless smooth 20ms ramp to target gain, cancelling any stale/overlapping transitions
-      try {
-        nodes.gain.gain.cancelScheduledValues(now);
-        nodes.gain.gain.setValueAtTime(nodes.gain.gain.value, now);
-        nodes.gain.gain.linearRampToValueAtTime(targetGain, now + 0.02);
-      } catch (e) {
-        nodes.gain.gain.value = targetGain;
+      // Clickless smooth 20ms ramp to target gain on Web Audio node
+      if (nodes.gain && this.audioContext) {
+        try {
+          nodes.gain.gain.cancelScheduledValues(now);
+          nodes.gain.gain.setValueAtTime(nodes.gain.gain.value, now);
+          nodes.gain.gain.linearRampToValueAtTime(targetGain, now + 0.02);
+        } catch (e) {
+          nodes.gain.gain.value = targetGain;
+        }
+      }
+
+      // Synchronize native HTMLAudioElement volume & playback
+      if (nodes.audioElement) {
+        nodes.audioElement.volume = targetGain;
+        if (isAudible && nodes.audioElement.paused) {
+          nodes.audioElement.play().catch(() => {});
+        }
       }
     }
   }

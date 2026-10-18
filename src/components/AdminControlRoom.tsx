@@ -63,6 +63,47 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
   const [masterAudioLevel, setMasterAudioLevel] = useState<number>(0);
   const [peerStatsMap, setPeerStatsMap] = useState<Record<string, PeerNetworkStats>>({});
   const [channelTrimMap, setChannelTrimMap] = useState<Record<string, number>>({});
+  const [audioEngineState, setAudioEngineState] = useState<AudioContextState | 'uninitialized'>('uninitialized');
+
+  // Keep audio context state in sync and unlock on any user interaction
+  useEffect(() => {
+    const updateAudioState = () => {
+      const ctx = hostAudio.getAudioContext();
+      if (ctx) {
+        setAudioEngineState(ctx.state);
+      } else {
+        setAudioEngineState('uninitialized');
+      }
+    };
+
+    updateAudioState();
+    const interval = setInterval(updateAudioState, 1000);
+
+    const unlockAudio = async () => {
+      await hostAudio.initAudio();
+      await hostAudio.resumeAll();
+      updateAudioState();
+    };
+
+    window.addEventListener('click', unlockAudio, { passive: true });
+    window.addEventListener('keydown', unlockAudio, { passive: true });
+    window.addEventListener('touchstart', unlockAudio, { passive: true });
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('keydown', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+  }, [hostAudio]);
+
+  const handleEngageAudio = async () => {
+    await hostAudio.initAudio();
+    await hostAudio.resumeAll();
+    hostAudio.playTestChime();
+    const ctx = hostAudio.getAudioContext();
+    if (ctx) setAudioEngineState(ctx.state);
+  };
 
   // Poll peer network stats for all connected participant phones
   useEffect(() => {
@@ -317,6 +358,23 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
 
   return (
     <div className="min-h-screen bg-bg-main text-text-primary flex flex-col font-body">
+      {/* ===================== TOP AUTOPLAY UNLOCK BANNER ===================== */}
+      {audioEngineState !== 'running' && (
+        <div className="bg-text-primary text-text-inverse px-4 py-2 border-b-2 border-white flex items-center justify-between text-xs font-mono font-bold animate-pulse z-50">
+          <div className="flex items-center gap-2">
+            <VolumeX size={15} className="shrink-0" />
+            <span>PA SPEAKER OUTPUT MUTED // BROWSER AUTOPLAY RESTRICTION ACTIVE</span>
+          </div>
+          <button
+            onClick={handleEngageAudio}
+            className="px-3 py-1 bg-bg-main text-text-primary border border-white uppercase text-[11px] btn-tactile hover:bg-white hover:text-black font-bold flex items-center gap-1.5 shadow"
+          >
+            <Volume2 size={12} />
+            <span>CLICK TO ENGAGE PA SPEAKERS</span>
+          </button>
+        </div>
+      )}
+
       {/* ===================== TOP HEADER ===================== */}
       <header className="bg-bg-secondary border-b border-border px-4 py-2.5 flex items-center justify-between select-none">
         {/* Left Wordmark & Session */}
@@ -339,6 +397,25 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
 
         {/* Center Indicators */}
         <div className="hidden lg:flex items-center gap-5 text-xs font-mono">
+          {/* Live PA Output Status */}
+          <button
+            onClick={handleEngageAudio}
+            title="Click to toggle or test PA output chime"
+            className="flex items-center gap-1.5 px-2 py-0.5 border border-border bg-bg-main hover:border-text-primary cursor-pointer"
+          >
+            {audioEngineState === 'running' ? (
+              <span className="text-green-400 font-bold flex items-center gap-1 text-[11px]">
+                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                <span>PA OUTPUT LIVE</span>
+              </span>
+            ) : (
+              <span className="text-yellow-400 font-bold flex items-center gap-1 text-[11px]">
+                <span className="w-2 h-2 rounded-full bg-yellow-400" />
+                <span>PA MUTED (CLICK TO UNMUTE)</span>
+              </span>
+            )}
+          </button>
+
           <div className="flex items-center gap-1.5">
             <Wifi size={13} className="text-text-primary" />
             <span className="text-text-muted">LAN IP:</span>
