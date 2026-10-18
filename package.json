@@ -1,0 +1,44 @@
+{
+  "name": "micro-pad",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"white,gray\" \"npm run server\" \"npm run client\"",
+    "dev:tunnel": "concurrently -n \"SERVER,CLIENT,TUNNEL\" -c \"white,gray,cyan\" \"npm run server\" \"npm run client:tunnel\" \"npm run tunnel\"",
+    "client": "vite --host 0.0.0.0 --port 5173",
+    "client:tunnel": "tsx scripts/start-client-tunnel.ts",
+    "server": "tsx server/index.ts",
+    "tunnel": "tsx scripts/tunnel.ts",
+    "test": "tsx test/arbitration.test.ts && tsx test/mobile-connection.test.ts && tsx test/mute-unmute.test.ts && tsx test/audio-performance.test.ts",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "lucide-react": "^0.395.0",
+    "qrcode": "^1.5.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "socket.io": "^4.7.5",
+    "socket.io-client": "^4.7.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.2",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-basic-ssl": "^1.2.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "autoprefixer": "^10.4.19",
+    "concurrently": "^8.2.2",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "tsx": "^4.11.0",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.13"
+  }
+}

@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: #080808;
+    color: #F5F5F5;
+    background-image: 
+      radial-gradient(#202020 0.75px, transparent 0.75px),
+      linear-gradient(to right, #101010 1px, transparent 1px),
+      linear-gradient(to bottom, #101010 1px, transparent 1px);
+    background-size: 24px 24px, 48px 48px, 48px 48px;
+    background-position: 0 0, 0 0, 0 0;
+  }
+
+  /* Custom monochrome scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #080808;
+    border-left: 1px solid #202020;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #303030;
+    border-radius: 0px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #505050;
+  }
+}
+
+/* Retro technical rackmount and panel utilities */
+.rack-screw {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #141414;
+  border: 1px solid #404040;
+  box-shadow: inset 0 1px 1px #000;
+  position: relative;
+}
+.rack-screw::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 1px;
+  right: 1px;
+  height: 1px;
+  background: #606060;
+  transform: rotate(45deg);
+}
+
+/* Crisp button press effect */
+.btn-tactile {
+  transition: transform 0.05s ease, filter 0.05s ease;
+}
+.btn-tactile:active {
+  transform: translateY(1px);
+}
+
+/* Focus styles without blue/purple */
+*:focus-visible {
+  outline: 1px solid #F5F5F5;
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
