@@ -5,7 +5,8 @@ import {
   ParticipantAudioEngine, 
   AudioLevelData, 
   MicrophoneDiagnostics, 
-  ClientNetworkStats 
+  ClientNetworkStats,
+  LocalMicTestResult 
 } from '../audio/ParticipantAudioEngine.js';
 import { RetroVUMeter } from './RetroVUMeter.js';
 import { 
@@ -24,7 +25,10 @@ import {
   Terminal, 
   ChevronDown, 
   ChevronUp,
-  Volume2
+  Volume2,
+  CheckCircle2,
+  Play,
+  Square
 } from 'lucide-react';
 
 interface ParticipantMobileProps {
@@ -68,12 +72,24 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
   const [vocalProfile, setVocalProfile] = useState<'stage' | 'conference'>('stage');
   const [showDiagnostics, setShowDiagnostics] = useState<boolean>(true);
 
+  // Isolated Local Hardware Mic Test state (Section B)
+  const [isLocalTestRunning, setIsLocalTestRunning] = useState<boolean>(false);
+  const [localTestData, setLocalTestData] = useState<LocalMicTestResult | null>(null);
+  const [localTestError, setLocalTestError] = useState<string | null>(null);
+  const localTestCleanupRef = useRef<(() => void) | null>(null);
+
   // Diagnostics and WebRTC telemetry
   const [diagnostics, setDiagnostics] = useState<MicrophoneDiagnostics | null>(null);
   const [netStats, setNetStats] = useState<ClientNetworkStats | null>(null);
 
   const audioEngineRef = useRef<ParticipantAudioEngine | null>(null);
   const isMountedRef = useRef<boolean>(true);
+  const sessionRef = useRef<SessionState | null>(null);
+  const webrtcInitializedRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
 
   // Check initial permission status if supported by browser
   useEffect(() => {
@@ -103,6 +119,10 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
     return () => {
       // Do NOT tear down microphone streams prematurely if page is active
       engine.stop();
+      if (localTestCleanupRef.current) {
+        localTestCleanupRef.current();
+        localTestCleanupRef.current = null;
+      }
     };
   }, []);
 
@@ -134,6 +154,36 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
     return () => clearInterval(interval);
   }, [micPermissionGranted]);
 
+  // ISOLATED LOCAL HARDWARE MIC TEST HANDLER
+  const handleToggleLocalTest = async () => {
+    if (isLocalTestRunning) {
+      if (localTestCleanupRef.current) {
+        localTestCleanupRef.current();
+        localTestCleanupRef.current = null;
+      }
+      setIsLocalTestRunning(false);
+      return;
+    }
+
+    setLocalTestError(null);
+    setIsLocalTestRunning(true);
+
+    try {
+      const engine = audioEngineRef.current;
+      if (!engine) throw new Error('Audio engine not initialized');
+
+      const cleanup = await engine.startLocalTest((data: LocalMicTestResult) => {
+        if (!isMountedRef.current) return;
+        setLocalTestData(data);
+      });
+
+      localTestCleanupRef.current = cleanup;
+    } catch (err: any) {
+      setIsLocalTestRunning(false);
+      setLocalTestError(err.message || 'Could not access microphone for local test');
+    }
+  };
+
   // Request Microphone, resume AudioContext, and bind Analyser & WebRTC stream
   const handleEnableMicrophone = useCallback(async (customStream?: MediaStream) => {
     setIsStartingMic(true);
@@ -147,6 +197,13 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
     }
 
     try {
+      // Free any running local test before starting main broadcast stream
+      if (localTestCleanupRef.current) {
+        localTestCleanupRef.current();
+        localTestCleanupRef.current = null;
+        setIsLocalTestRunning(false);
+      }
+
       // 1. Capture microphone or reuse live stream
       await engine.startMicrophone(customStream || (initialStream || undefined), vocalProfile);
       
@@ -183,11 +240,13 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
         socket.emit('participant:status', { state: 'READY' });
       }
 
-      // 5. Establish WebRTC uplink to Host
-      if (socket) {
+      // 5. Establish WebRTC uplink to Host (only once per session lifecycle)
+      if (socket && !webrtcInitializedRef.current) {
+        webrtcInitializedRef.current = true;
         await engine.initWebRTC((signal, type) => {
           socket.emit('webrtc:signal', {
-            to: session?.adminSocketId || undefined,
+            to: sessionRef.current?.adminSocketId || undefined,
+            sessionId,
             signal,
             type
           });
@@ -213,7 +272,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
         socket.emit('participant:status', { state: 'PERMISSION DENIED' });
       }
     }
-  }, [socket, initialStream, session, vocalProfile]);
+  }, [socket, initialStream, vocalProfile, sessionId]);
 
   // Attempt immediate auto-activation if initialStream was acquired on JoinPage
   useEffect(() => {
@@ -396,6 +455,95 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
           </div>
           <span className="text-[9px] font-mono text-text-muted uppercase">PRIORITY LEVEL</span>
         </div>
+      </div>
+
+      {/* ISOLATED LOCAL HARDWARE MIC TEST (SECTION B) */}
+      <div className="my-1 p-3 bg-bg-elevated border-2 border-border rounded-sm space-y-2.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-xs font-mono font-bold">
+            <Activity size={13} className={isLocalTestRunning ? 'text-green-400 animate-pulse' : 'text-text-primary'} />
+            <span>LOCAL MIC TEST</span>
+          </div>
+          <button
+            onClick={handleToggleLocalTest}
+            className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase btn-tactile flex items-center gap-1 border ${
+              isLocalTestRunning
+                ? 'bg-red-500 text-white border-red-400 hover:bg-red-600'
+                : 'bg-text-primary text-text-inverse border-white hover:bg-white/90'
+            }`}
+          >
+            {isLocalTestRunning ? <Square size={10} /> : <Play size={10} />}
+            <span>{isLocalTestRunning ? 'STOP TEST' : 'START LOCAL TEST'}</span>
+          </button>
+        </div>
+
+        <p className="text-[10px] font-mono text-text-muted">
+          Verifies physical ADC microphone capture directly without depending on WebRTC, server, or admin floor.
+        </p>
+
+        {localTestError && (
+          <div className="p-2 border border-red-500 bg-red-950/20 text-red-400 text-[10px] font-mono flex items-center gap-1.5">
+            <AlertCircle size={12} className="shrink-0" />
+            <span>{localTestError}</span>
+          </div>
+        )}
+
+        {isLocalTestRunning && localTestData && (
+          <div className="space-y-2 pt-2 border-t border-border/50">
+            <div
+              className={`py-1.5 px-2 rounded-sm border text-center font-mono text-xs font-bold uppercase transition-all ${
+                localTestData.isVoiceDetected
+                  ? 'bg-green-500/20 border-green-400 text-green-300 animate-pulse'
+                  : 'bg-bg-main border-border text-text-muted'
+              }`}
+            >
+              {localTestData.isVoiceDetected
+                ? '● VOICE DETECTED (INPUT EXCEEDS THRESHOLD)'
+                : 'LISTENING... SPEAK INTO PHONE MICROPHONE'}
+            </div>
+
+            <RetroVUMeter
+              level={localTestData.levelPct}
+              segments={16}
+              height="h-4"
+              showLabels={true}
+              numericValue={
+                localTestData.db !== -Infinity
+                  ? `${localTestData.db} dBFS (${localTestData.levelPct}%)`
+                  : '-INF dB (0%)'
+              }
+              label="LOCAL HARDWARE ADC INPUT"
+            />
+
+            <div className="grid grid-cols-3 gap-1 font-mono text-[9px] text-center">
+              <div className="p-1.5 bg-bg-main border border-border">
+                <span className="text-text-muted block text-[8px]">RMS</span>
+                <span className="font-bold text-text-primary">{localTestData.rms.toFixed(4)}</span>
+              </div>
+              <div className="p-1.5 bg-bg-main border border-border">
+                <span className="text-text-muted block text-[8px]">PEAK</span>
+                <span className="font-bold text-text-primary">{localTestData.peak.toFixed(2)}</span>
+              </div>
+              <div className="p-1.5 bg-bg-main border border-border">
+                <span className="text-text-muted block text-[8px]">dBFS</span>
+                <span className="font-bold text-text-primary">
+                  {localTestData.db !== -Infinity ? `${localTestData.db}` : '-INF'}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-1.5 bg-bg-main border border-border font-mono text-[9px]">
+              <div className="text-text-muted text-[8px] mb-0.5">ADC FLOAT SAMPLES (FIRST 8):</div>
+              <div className="text-text-primary font-mono truncate">
+                [{localTestData.samplePreview.map((v) => (v >= 0 ? `+${v.toFixed(3)}` : v.toFixed(3))).join(', ')}]
+              </div>
+            </div>
+
+            <div className="text-[9px] font-mono text-text-muted truncate">
+              DEVICE: <strong className="text-text-primary">{localTestData.deviceLabel}</strong>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Primary Interaction Area: Start Mic CTA OR Live Instrument */}

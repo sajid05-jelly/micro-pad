@@ -43,11 +43,22 @@ export interface MicrophoneDiagnostics {
   inputDevices: { deviceId: string; label: string }[];
 }
 
+export interface LocalMicTestResult {
+  rms: number;
+  peak: number;
+  db: number;
+  levelPct: number;
+  isVoiceDetected: boolean;
+  samplePreview: number[];
+  deviceLabel: string;
+}
+
 export class ParticipantAudioEngine {
   private stream: MediaStream | null = null;
   private audioContext: AudioContext | null = null;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
   private analyser: AnalyserNode | null = null;
+  private muteSinkNode: GainNode | null = null;
   private timeDomainBuffer: Float32Array | null = null;
   private peerConnection: RTCPeerConnection | null = null;
   private animationFrameId: number | null = null;
@@ -176,6 +187,11 @@ export class ParticipantAudioEngine {
         this.sourceNode.disconnect();
       } catch {}
     }
+    if (this.muteSinkNode) {
+      try {
+        this.muteSinkNode.disconnect();
+      } catch {}
+    }
 
     this.sourceNode = this.audioContext.createMediaStreamSource(stream);
     this.analyser = this.audioContext.createAnalyser();
@@ -183,8 +199,19 @@ export class ParticipantAudioEngine {
     this.analyser.smoothingTimeConstant = 0.2;
     this.timeDomainBuffer = new Float32Array(this.analyser.fftSize);
 
-    // Clean monitoring: connect source -> analyser ONLY. Never connect to destination to prevent speaker feedback!
+    // CRITICAL FOR WEBKIT & CHROMIUM (iOS Safari & Android Chrome):
+    // Web Audio rendering is pull-driven by AudioContext.destination.
+    // If a node graph has no path terminating at destination, mobile browsers suspend sample pulling
+    // from the MediaStreamAudioSourceNode to conserve device battery.
+    // We connect: sourceNode -> analyser -> muteSinkNode (gain = 0.0) -> destination.
+    // This forces the audio engine to pull live microphone samples continuously into the AnalyserNode,
+    // while keeping phone speaker output 100% silent (ZERO feedback)!
+    this.muteSinkNode = this.audioContext.createGain();
+    this.muteSinkNode.gain.setValueAtTime(0.0, this.audioContext.currentTime);
+
     this.sourceNode.connect(this.analyser);
+    this.analyser.connect(this.muteSinkNode);
+    this.muteSinkNode.connect(this.audioContext.destination);
 
     // 7. Attach track to active WebRTC peer connection sender if already connected
     if (this.peerConnection) {
@@ -399,6 +426,127 @@ export class ParticipantAudioEngine {
     };
   }
 
+  /**
+   * ISOLATED LOCAL MICROPHONE TEST (Section B)
+   * Captures microphone directly, reads real-time time-domain float samples,
+   * calculates RMS/dBFS/peak, and extracts sample waveforms without touching WebRTC or server.
+   */
+  public async startLocalTest(onSample: (res: LocalMicTestResult) => void): Promise<() => void> {
+    const isSecure = typeof window !== 'undefined' ? window.isSecureContext : true;
+    const isLocalhost = typeof window !== 'undefined' && 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    if (!isSecure && !isLocalhost) {
+      throw new Error("Local test requires HTTPS or localhost for microphone capture.");
+    }
+
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      throw new Error("getUserMedia is not supported by this browser.");
+    }
+
+    // Capture microphone with standard constraints
+    let testStream: MediaStream;
+    try {
+      testStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          autoGainControl: true
+        },
+        video: false
+      });
+    } catch {
+      testStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false
+      });
+    }
+
+    const tracks = testStream.getAudioTracks();
+    if (tracks.length === 0 || tracks[0].readyState !== 'live') {
+      throw new Error("Local microphone track could not be opened.");
+    }
+
+    const deviceLabel = tracks[0].label || 'Default Mobile Microphone';
+
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    const testCtx = new AudioCtx({ latencyHint: 'interactive' });
+    if (testCtx.state === 'suspended') {
+      await testCtx.resume();
+    }
+
+    const testSource = testCtx.createMediaStreamSource(testStream);
+    const testAnalyser = testCtx.createAnalyser();
+    testAnalyser.fftSize = 512;
+    testAnalyser.smoothingTimeConstant = 0.2;
+
+    // Pull-through zero-gain sink to destination
+    const testSink = testCtx.createGain();
+    testSink.gain.setValueAtTime(0.0, testCtx.currentTime);
+
+    testSource.connect(testAnalyser);
+    testAnalyser.connect(testSink);
+    testSink.connect(testCtx.destination);
+
+    const buffer = new Float32Array(testAnalyser.fftSize);
+    let animId: number | null = null;
+    let isStopped = false;
+
+    const tick = () => {
+      if (isStopped) return;
+      if (testCtx.state === 'suspended') {
+        testCtx.resume().catch(() => {});
+      }
+
+      testAnalyser.getFloatTimeDomainData(buffer as any);
+
+      let sumSquares = 0;
+      let peak = 0;
+      for (let i = 0; i < buffer.length; i++) {
+        const s = buffer[i];
+        const abs = Math.abs(s);
+        if (abs > peak) peak = abs;
+        sumSquares += s * s;
+      }
+
+      const rms = Math.sqrt(sumSquares / buffer.length);
+      let db = -Infinity;
+      let levelPct = 0;
+
+      if (rms > 0.0002) {
+        db = 20 * Math.log10(rms);
+        levelPct = Math.max(0, Math.min(100, Math.round(((db + 60) / 60) * 100)));
+      }
+
+      // Voice detected threshold: RMS > 0.012 (~ -38 dBFS)
+      const isVoiceDetected = rms > 0.012;
+      const samplePreview = Array.from(buffer.slice(0, 8)).map(v => Math.round(v * 1000) / 1000);
+
+      onSample({
+        rms: Math.round(rms * 10000) / 10000,
+        peak: Math.round(peak * 100) / 100,
+        db: isFinite(db) ? Math.round(db * 10) / 10 : -Infinity,
+        levelPct,
+        isVoiceDetected,
+        samplePreview,
+        deviceLabel
+      });
+
+      animId = requestAnimationFrame(tick);
+    };
+
+    animId = requestAnimationFrame(tick);
+
+    return () => {
+      isStopped = true;
+      if (animId !== null) cancelAnimationFrame(animId);
+      testStream.getTracks().forEach(t => t.stop());
+      try { testSource.disconnect(); } catch {}
+      try { testAnalyser.disconnect(); } catch {}
+      try { testSink.disconnect(); } catch {}
+      try { testCtx.close(); } catch {}
+    };
+  }
+
   // WebRTC initialization as caller (participant -> host) with Opus optimization
   public async initWebRTC(
     sendSignal: (signal: any, type: string) => void
@@ -419,6 +567,15 @@ export class ParticipantAudioEngine {
         pc.addTrack(track, this.stream!);
       });
     }
+
+    // Explicitly configure audio transceiver as sendonly
+    try {
+      const transceivers = pc.getTransceivers();
+      const audioTx = transceivers.find(t => t.sender.track && t.sender.track.kind === 'audio');
+      if (audioTx) {
+        audioTx.direction = 'sendonly';
+      }
+    } catch {}
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {

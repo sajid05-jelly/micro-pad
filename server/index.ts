@@ -639,10 +639,11 @@ io.on('connection', (socket: Socket) => {
   });
 
   // --- WEBRTC SIGNALING (OFFER, ANSWER, ICE CANDIDATES) ---
-  socket.on('webrtc:signal', ({ to, signal, type }: { to?: string; signal: any; type: string }) => {
+  socket.on('webrtc:signal', ({ to, sessionId, signal, type }: { to?: string; sessionId?: string; signal: any; type: string }) => {
     let target = to;
-    if (!target && userSessionId && sessions[userSessionId]?.adminSocketId) {
-      target = sessions[userSessionId].adminSocketId!;
+    const sessId = sessionId || userSessionId;
+    if (!target && sessId && sessions[sessId]?.adminSocketId) {
+      target = sessions[sessId].adminSocketId!;
     }
     if (target) {
       io.to(target).emit('webrtc:signal', {

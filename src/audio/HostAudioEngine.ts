@@ -32,7 +32,6 @@ export class HostAudioEngine {
     gain: GainNode;
     analyser: AnalyserNode;
     stream: MediaStream;
-    audioElement?: HTMLAudioElement;
   }> = new Map();
 
   private channelTrim: Map<string, number> = new Map();
@@ -165,22 +164,9 @@ export class HostAudioEngine {
       };
     }
 
-    // Single-point playback: Keep HTML5 audio element strictly muted so it only acts as an internal
-    // WebRTC clock anchor if needed by Chromium, PREVENTING double-playback comb filtering & echo!
-    let audioElement: HTMLAudioElement | undefined;
-    try {
-      audioElement = new Audio();
-      audioElement.srcObject = stream;
-      audioElement.autoplay = true;
-      audioElement.setAttribute('playsinline', 'true');
-      audioElement.volume = 0.0;
-      audioElement.muted = true; // MUST remain muted to prevent echo/comb filtering!
-      audioElement.play().catch(() => {});
-    } catch (e) {
-      console.warn('AudioElement playback setup skipped:', e);
-    }
-
-    this.channelNodes.set(participantId, { source, gain, analyser, stream, audioElement });
+    // Direct single-point audio routing: source -> gain -> analyser -> masterGain -> compressor -> destination
+    // No dummy HTMLAudioElement with muted=true, which in Chromium causes the underlying WebRTC track to be muted!
+    this.channelNodes.set(participantId, { source, gain, analyser, stream });
     this.updateRouting();
   }
 
@@ -191,10 +177,6 @@ export class HostAudioEngine {
         existing.source.disconnect();
         existing.gain.disconnect();
         existing.analyser.disconnect();
-        if (existing.audioElement) {
-          existing.audioElement.pause();
-          existing.audioElement.srcObject = null;
-        }
       } catch (e) {
         // ignore already disconnected
       }
