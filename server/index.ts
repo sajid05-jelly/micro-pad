@@ -62,7 +62,7 @@ export function getLocalIp(): string {
 }
 
 const localIp = getLocalIp();
-const PORT = 3001;
+const PORT = Number(process.env.PORT) || 3001;
 
 // Default arbitration configuration
 const defaultArbitrationConfig: ArbitrationConfig = {

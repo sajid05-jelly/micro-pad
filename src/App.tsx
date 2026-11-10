@@ -5,6 +5,7 @@ import { ParticipantMobile } from './components/ParticipantMobile.js';
 import { JoinPage } from './components/JoinPage.js';
 import { HostAudioEngine } from './audio/HostAudioEngine.js';
 import { PriorityLevel } from './types.js';
+import { getApiUrl, getSocketUrl } from './config.js';
 
 // Mobile device detection helper (iPhone, Android, tablets, or small viewport)
 const isMobileDevice = (): boolean => {
@@ -89,9 +90,9 @@ export default function App() {
     return () => window.removeEventListener('popstate', handleUrlChange);
   }, []);
 
-  // Fetch local LAN network IP & tunnel URL from backend server (Relative URL prevents mixed-content errors)
+  // Fetch local LAN network IP & tunnel URL from backend server (supports custom backend URL for cloud deploy)
   useEffect(() => {
-    fetch('/api/info')
+    fetch(getApiUrl('/api/info'))
       .then(res => res.json())
       .then(data => {
         if (data.localIp && data.localIp !== 'localhost' && !data.localIp.startsWith('169.254.')) {
@@ -113,8 +114,8 @@ export default function App() {
     setConnectionStatus('CONNECTING');
     setConnectionError(null);
 
-    // Socket.IO connects to the exact same origin as the page to prevent any CORS or mixed-content blocks
-    const newSocket = io(window.location.origin, {
+    // Socket.IO connects to the configured backend URL or same origin
+    const newSocket = io(getSocketUrl(), {
       path: '/socket.io',
       reconnectionAttempts: 15,
       reconnectionDelay: 1500,

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import QRCode from 'qrcode';
+import { getApiUrl } from '../config.js';
 import { 
   QrCode, 
   Copy, 
@@ -46,7 +47,7 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
 
   // Refresh server info
   const refreshServerInfo = useCallback(() => {
-    fetch('/api/info')
+    fetch(getApiUrl('/api/info'))
       .then(r => r.json())
       .then(data => {
         if (data.localIp && data.localIp !== 'localhost' && !data.localIp.startsWith('169.254.')) {
@@ -96,7 +97,7 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
     }
 
     try {
-      const res = await fetch(`/api/tunnel/verify?url=${encodeURIComponent(clean)}`);
+      const res = await fetch(getApiUrl(`/api/tunnel/verify?url=${encodeURIComponent(clean)}`));
       const data = await res.json();
       if (data.reachable) {
         setProbeStatus('verified');
@@ -137,9 +138,18 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
     params.set('mic', `MIC ${String(channelNumber).padStart(2, '0')}`);
   }
 
+  // Check if Control Room is running on a public HTTPS domain (e.g. deployed on Netlify / Cloud)
+  const isPublicHttpsHost = typeof window !== 'undefined' && 
+    window.location.protocol === 'https:' && 
+    !window.location.hostname.includes('localhost') && 
+    !window.location.hostname.startsWith('172.') && 
+    !window.location.hostname.startsWith('192.') && 
+    !window.location.hostname.startsWith('10.');
+
   // Determine effective base host
   // In LAN mode, standard HTTP is used so mobile browsers connect without NET::ERR_CERT_AUTHORITY_INVALID
-  let effectiveBaseHost = `http://${effectiveIp}:5173`;
+  // On public HTTPS deployments (Netlify), origin is already secure and reachable globally
+  let effectiveBaseHost = isPublicHttpsHost ? window.location.origin : `http://${effectiveIp}:5173`;
 
   if (connectionMode === 'tunnel' && activeTunnel) {
     let cleanTunnel = activeTunnel.trim().replace(/\/+$/, '');
@@ -151,8 +161,8 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
 
   const joinUrl = `${effectiveBaseHost}/join?${params.toString()}`;
 
-  // Generate QR code only when URL is ready and verified (in tunnel mode, only if verified)
-  const isQrReady = connectionMode === 'lan' || (connectionMode === 'tunnel' && probeStatus === 'verified');
+  // Generate QR code only when URL is ready and verified (in tunnel mode, only if verified; or if public HTTPS host)
+  const isQrReady = isPublicHttpsHost || connectionMode === 'lan' || (connectionMode === 'tunnel' && probeStatus === 'verified');
 
   useEffect(() => {
     if (isOpen && isQrReady) {
@@ -180,7 +190,7 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
       clean = `https://${clean}`;
     }
     try {
-      await fetch('/api/tunnel', {
+      await fetch(getApiUrl('/api/tunnel'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: clean })

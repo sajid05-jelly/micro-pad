@@ -70,7 +70,22 @@ Verifies:
 
 ---
 
-## 6. Real-World Limitations & Best Practices
+## 6. Production Deployment
+
+### Frontend (Netlify)
+The frontend is pre-configured with `netlify.toml` and `public/_redirects`:
+- **Build command:** `npm run build`
+- **Publish directory:** `dist`
+- **Environment Variable (optional):** Set `VITE_BACKEND_URL` to point to your deployed backend (e.g. `https://your-backend.onrender.com`).
+
+### Backend (Render / Railway / Fly.io / VPS)
+The backend requires a persistent Node.js runtime supporting WebSockets (Socket.IO):
+- **Start command:** `npm run server`
+- **Port:** Automatically uses `process.env.PORT` (defaults to `3001`).
+
+---
+
+## 7. Real-World Limitations & Best Practices
 
 - **Bluetooth Speaker Latency:** Bluetooth A2DP audio profiles add ~80–180ms of internal physical buffering on the speaker hardware. For time-critical stage monitoring, plug a 3.5mm AUX or USB interface directly into the host laptop.
 - **Room Feedback:** In loud venue halls, high loudspeaker volume can be picked up by handset microphones. Maintain reasonable distance between the handsets and the loudspeakers or use directional speaking technique.
