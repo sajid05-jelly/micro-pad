@@ -90,12 +90,8 @@ export const JoinPage: React.FC<JoinPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-bg-main text-text-primary flex items-center justify-center p-4 relative overflow-hidden font-body">
-      {/* Antigravity Ambient Glow & Dotted Halftone Texture */}
-      <div className="absolute inset-0 antigravity-glow pointer-events-none" />
-      <div className="absolute inset-0 antigravity-halftone pointer-events-none" />
-
-      <div className="relative z-10 w-full max-w-md bg-bg-card border border-border p-6 sm:p-8 rounded-2xl shadow-card">
+    <div className="min-h-screen bg-transparent text-text-primary flex items-center justify-center p-4 relative font-body">
+      <div className="relative z-10 w-full max-w-md bg-bg-card/90 backdrop-blur-xl border border-border p-6 sm:p-8 rounded-2xl shadow-card">
         {/* Brand Header */}
         <div className="text-center pb-4 border-b border-border/80 mb-5">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-bg-secondary border border-border text-[10px] font-mono tracking-widest uppercase mb-3 text-accent-blue rounded-full shadow-sm">

@@ -8,17 +8,12 @@
   }
 
   body {
-    background-color: #050505;
+    background-color: #05080f;
     color: #F5F5F5;
     min-height: 100vh;
     position: relative;
     overflow-x: hidden;
-    background-image: 
-      radial-gradient(ellipse 90% 55% at 50% 100%, rgba(9, 43, 89, 0.45) 0%, rgba(18, 59, 67, 0.25) 38%, rgba(5, 5, 5, 0) 75%),
-      radial-gradient(rgba(52, 120, 246, 0.08) 1px, transparent 1px);
-    background-size: 100% 100%, 16px 16px;
-    background-position: 0 0, 0 0;
-    background-attachment: fixed;
+    font-family: 'Inter', system-ui, sans-serif;
   }
 
   /* Custom Minimalist Dark Scrollbars */
@@ -27,7 +22,7 @@
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #050505;
+    background: #05080f;
     border-left: 1px solid #202024;
   }
   ::-webkit-scrollbar-thumb {
@@ -39,7 +34,116 @@
   }
 }
 
-/* Antigravity Ambient Lighting & Halftone Texture */
+/* ========================================================= */
+/* LIVE ROTATING ANTIGRAVITY GLOW EFFECT & MORPHING BLOBS    */
+/* ========================================================= */
+.glow-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.glow-spinner {
+  position: absolute;
+  width: 120vw;
+  height: 120vw;
+  max-width: 1400px;
+  max-height: 1400px;
+  top: 65vh; /* Pushed to bottom allowing blur to bleed upwards */
+  animation: spin 20s linear infinite;
+  filter: blur(150px); /* Seamless endless atmospheric fade */
+  opacity: 0.85;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.blob {
+  position: absolute;
+  animation: morph 10s ease-in-out infinite;
+  will-change: border-radius;
+}
+
+/* Cyan Blob */
+.blob-cyan {
+  width: 60%;
+  height: 60%;
+  background-color: #0ea5e9;
+  top: 0;
+  left: 10%;
+  animation-duration: 14s;
+}
+
+/* Deep Blue Blob */
+.blob-blue {
+  width: 70%;
+  height: 65%;
+  background-color: #1d4ed8;
+  bottom: 5%;
+  right: 0;
+  animation-duration: 18s;
+  animation-direction: reverse;
+}
+
+/* Dark Violet Blob */
+.blob-violet {
+  width: 55%;
+  height: 55%;
+  background-color: #4c1d95;
+  top: 25%;
+  left: 35%;
+  animation-duration: 11s;
+}
+
+/* Dotted Mesh Pattern */
+.mesh-pattern {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  background-size: 16px 16px;
+  mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, transparent 75%);
+  -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, transparent 75%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Organic Shapeless Morphing Animation */
+@keyframes morph {
+  0% {
+    border-radius: 40% 60% 70% 30% / 40% 40% 60% 50%;
+  }
+  34% {
+    border-radius: 70% 30% 50% 50% / 30% 30% 70% 70%;
+  }
+  67% {
+    border-radius: 100% 60% 60% 100% / 100% 100% 60% 60%;
+  }
+  100% {
+    border-radius: 40% 60% 70% 30% / 40% 40% 60% 50%;
+  }
+}
+
+/* Continuous Rotation Animation */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Fallback static classes mapped safely */
 .antigravity-glow,
 .cinematic-glow {
   pointer-events: none;

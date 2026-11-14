@@ -243,50 +243,65 @@ export default function App() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-bg-main text-text-primary">
-      {role === 'home' ? (
-        <HomeDashboard
-          sessionId={sessionId}
-          connectionStatus={connectionStatus}
-          connectionError={connectionError}
-          onRetryConnection={handleRetryConnection}
-          onStartSession={() => setRole('admin')}
-          onJoinSession={() => setRole('join')}
-          onOpenControlRoom={() => setRole('admin')}
-        />
-      ) : role === 'admin' ? (
-        <AdminControlRoom
-          socket={socket}
-          sessionId={sessionId}
-          localIp={localIp}
-          tunnelUrl={tunnelUrl}
-          hostAudio={hostAudioRef.current}
-          onGoHome={() => setRole('home')}
-        />
-      ) : role === 'mic' ? (
-        <ParticipantMobile
-          socket={socket}
-          sessionId={sessionId}
-          initialParticipantName={participantName}
-          initialStream={participantStream}
-          connectionStatus={connectionStatus}
-          connectionError={connectionError}
-          onRetryConnection={handleRetryConnection}
-          onLeave={handleLeaveSession}
-        />
-      ) : (
-        <JoinPage
-          initialSessionId={sessionId}
-          assignedChannel={assignedChannel}
-          assignedMicLabel={assignedMicLabel}
-          connectionStatus={connectionStatus}
-          connectionError={connectionError}
-          onRetryConnection={handleRetryConnection}
-          onJoin={handleJoinFromPage}
-          onOpenAdmin={() => setRole('admin')}
-          onGoHome={() => setRole('home')}
-        />
-      )}
+    <div className="w-full min-h-screen bg-[#05080f] text-text-primary relative overflow-x-hidden">
+      {/* Live Rotating Antigravity Glow Effect */}
+      <div className="glow-container">
+        <div className="glow-spinner">
+          <div className="blob blob-cyan" />
+          <div className="blob blob-blue" />
+          <div className="blob blob-violet" />
+        </div>
+      </div>
+
+      {/* Dotted Mesh Pattern */}
+      <div className="mesh-pattern" />
+
+      {/* Main Content layer */}
+      <div className="relative z-10 w-full min-h-screen">
+        {role === 'home' ? (
+          <HomeDashboard
+            sessionId={sessionId}
+            connectionStatus={connectionStatus}
+            connectionError={connectionError}
+            onRetryConnection={handleRetryConnection}
+            onStartSession={() => setRole('admin')}
+            onJoinSession={() => setRole('join')}
+            onOpenControlRoom={() => setRole('admin')}
+          />
+        ) : role === 'admin' ? (
+          <AdminControlRoom
+            socket={socket}
+            sessionId={sessionId}
+            localIp={localIp}
+            tunnelUrl={tunnelUrl}
+            hostAudio={hostAudioRef.current}
+            onGoHome={() => setRole('home')}
+          />
+        ) : role === 'mic' ? (
+          <ParticipantMobile
+            socket={socket}
+            sessionId={sessionId}
+            initialParticipantName={participantName}
+            initialStream={participantStream}
+            connectionStatus={connectionStatus}
+            connectionError={connectionError}
+            onRetryConnection={handleRetryConnection}
+            onLeave={handleLeaveSession}
+          />
+        ) : (
+          <JoinPage
+            initialSessionId={sessionId}
+            assignedChannel={assignedChannel}
+            assignedMicLabel={assignedMicLabel}
+            connectionStatus={connectionStatus}
+            connectionError={connectionError}
+            onRetryConnection={handleRetryConnection}
+            onJoin={handleJoinFromPage}
+            onOpenAdmin={() => setRole('admin')}
+            onGoHome={() => setRole('home')}
+          />
+        )}
+      </div>
     </div>
   );
 }

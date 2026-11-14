@@ -28,10 +28,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   onOpenControlRoom
 }) => {
   return (
-    <div className="min-h-screen bg-bg-main text-text-primary flex flex-col font-body relative overflow-hidden">
-      {/* Antigravity Ambient Glow & Dotted Halftone Texture */}
-      <div className="absolute inset-0 antigravity-glow pointer-events-none" />
-      <div className="absolute inset-0 antigravity-halftone pointer-events-none" />
+    <div className="min-h-screen bg-transparent text-text-primary flex flex-col font-body relative">
 
       {/* Top Bar with Minimalist Brand & Status */}
       <header className="relative z-10 border-b border-border/80 px-4 sm:px-8 py-3.5 flex items-center justify-between bg-bg-secondary/40 backdrop-blur-md">

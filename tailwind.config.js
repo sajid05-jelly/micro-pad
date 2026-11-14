@@ -8,15 +8,15 @@ export default {
     extend: {
       colors: {
         bg: {
-          main: '#050505',
-          secondary: '#0B0B0D',
-          card: '#111114',
-          elevated: '#16161A',
-          hover: '#1C1C22',
-          active: '#22222A',
+          main: '#05080f',
+          secondary: '#0B0F19',
+          card: '#101524',
+          elevated: '#161C30',
+          hover: '#1B223B',
+          active: '#222B48',
         },
         border: {
-          subtle: '#16161A',
+          subtle: '#161C30',
           DEFAULT: '#202024',
           card: '#202024',
           hover: '#2E2E36',
@@ -27,7 +27,7 @@ export default {
           primary: '#F5F5F5',
           secondary: '#A1A1AA',
           muted: '#686873',
-          inverse: '#050505',
+          inverse: '#05080f',
           accent: '#3478F6',
         },
         accent: {
@@ -37,8 +37,9 @@ export default {
           'blue-subtle': 'rgba(52, 120, 246, 0.12)',
         },
         ambient: {
-          blue: '#092B59',
-          teal: '#123B43',
+          cyan: '#0ea5e9',
+          blue: '#1d4ed8',
+          violet: '#4c1d95',
         },
       },
       fontFamily: {
@@ -49,8 +50,8 @@ export default {
       boxShadow: {
         'inset-sm': 'inset 0 1px 2px rgba(0, 0, 0, 0.8)',
         'card': '0 4px 20px rgba(0, 0, 0, 0.5)',
-        'blue-glow': '0 0 20px rgba(52, 120, 246, 0.3)',
-        'ambient-glow': '0 0 40px rgba(9, 43, 89, 0.45)',
+        'blue-glow': '0 0 25px rgba(52, 120, 246, 0.35)',
+        'live-glow': '0 0 45px rgba(14, 165, 233, 0.4)',
       },
       animation: {
         'pulse-subtle': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',

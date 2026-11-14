@@ -382,10 +382,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-bg-main text-text-primary flex flex-col p-4 w-full sm:max-w-md mx-auto relative select-none overflow-x-hidden">
-      {/* Antigravity Ambient Glow & Dotted Halftone Texture */}
-      <div className="absolute inset-0 antigravity-glow pointer-events-none" />
-      <div className="absolute inset-0 antigravity-halftone pointer-events-none" />
+    <div className="min-h-screen bg-transparent text-text-primary flex flex-col p-4 w-full sm:max-w-md mx-auto relative select-none">
 
       {/* Header */}
       <header className="relative z-10 flex items-center justify-between pb-3.5 border-b border-border/80 mb-3.5">

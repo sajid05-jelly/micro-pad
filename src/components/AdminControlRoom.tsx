@@ -406,7 +406,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
   });
 
   return (
-    <div className="min-h-screen bg-bg-main text-text-primary flex flex-col font-body">
+    <div className="min-h-screen bg-transparent text-text-primary flex flex-col font-body relative">
       {/* ===================== TOP AUTOPLAY UNLOCK BANNER ===================== */}
       {audioEngineState !== 'running' && (
         <div className="bg-bg-secondary text-text-primary px-4 py-2 border-b border-border flex items-center justify-between text-xs font-mono font-bold z-50 shadow-md">
