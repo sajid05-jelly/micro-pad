@@ -159,6 +159,92 @@
   -webkit-mask-image: radial-gradient(ellipse 80% 50% at 50% 95%, black 20%, transparent 80%);
 }
 
+/* ========================================================= */
+/* LIQUID GLASS DESIGN SYSTEM (GLASSMORPHISM & SPECULAR EDGES)*/
+/* ========================================================= */
+.liquid-glass,
+.bg-bg-card {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.02) 40%,
+    rgba(16, 21, 36, 0.62) 100%
+  ) !important;
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.4),
+    0 20px 40px -15px rgba(0, 0, 0, 0.65),
+    0 0 20px -3px rgba(14, 165, 233, 0.12) !important;
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Liquid Glass Top Specular Meniscus Line (Catches ambient light) */
+.liquid-glass::before,
+.bg-bg-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.45) 20%,
+    rgba(56, 189, 248, 0.75) 50%,
+    rgba(255, 255, 255, 0.45) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+  border-radius: inherit;
+}
+
+/* Liquid Glass Interactive Hover State for Cards */
+.liquid-glass-interactive:hover,
+.group:hover.bg-bg-card,
+.group:hover .liquid-glass {
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  box-shadow: 
+    inset 0 1px 2px 0 rgba(255, 255, 255, 0.38),
+    inset 0 -1px 1px 0 rgba(0, 0, 0, 0.4),
+    0 25px 50px -12px rgba(0, 0, 0, 0.8),
+    0 0 25px 3px rgba(14, 165, 233, 0.28) !important;
+  transform: translateY(-2px);
+}
+
+/* Secondary Frosted Glass (for Badges, Inner Bars, Sub-Cards) */
+.liquid-glass-subtle,
+.bg-bg-secondary {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.14) !important;
+}
+
+/* Active or Selected Channel Liquid Glass Card */
+.liquid-glass-active {
+  background: linear-gradient(
+    135deg,
+    rgba(52, 120, 246, 0.25) 0%,
+    rgba(14, 165, 233, 0.12) 40%,
+    rgba(16, 21, 36, 0.75) 100%
+  ) !important;
+  backdrop-filter: blur(28px) saturate(210%);
+  -webkit-backdrop-filter: blur(28px) saturate(210%);
+  border: 1px solid rgba(56, 189, 248, 0.65) !important;
+  box-shadow: 
+    inset 0 1px 2px 0 rgba(255, 255, 255, 0.45),
+    inset 0 0 25px 0 rgba(52, 120, 246, 0.3),
+    0 25px 50px -12px rgba(0, 0, 0, 0.85),
+    0 0 30px 4px rgba(14, 165, 233, 0.4) !important;
+}
+
 /* Tactile button press effect */
 .btn-tactile {
   transition: transform 0.08s ease, filter 0.08s ease, background-color 0.15s ease, border-color 0.15s ease;

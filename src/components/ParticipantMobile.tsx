@@ -385,9 +385,9 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
     <div className="min-h-screen bg-transparent text-text-primary flex flex-col p-4 w-full sm:max-w-md mx-auto relative select-none">
 
       {/* Header */}
-      <header className="relative z-10 flex items-center justify-between pb-3.5 border-b border-border/80 mb-3.5">
+      <header className="relative z-10 flex items-center justify-between p-3.5 liquid-glass-subtle rounded-2xl mb-3.5 border-b border-border/80">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-bg-card border border-border text-accent-blue flex items-center justify-center font-bold shadow-sm">
+          <div className="w-8 h-8 rounded-lg liquid-glass-subtle text-accent-blue flex items-center justify-center font-bold shadow-sm">
             <Radio size={16} className={isLiveOnAir ? 'animate-pulse' : ''} />
           </div>
           <div>
@@ -512,7 +512,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
       )}
 
       {/* Main Channel & Call Sign Info */}
-      <div className="relative z-10 mb-3.5 p-3.5 bg-bg-card border border-border rounded-xl flex items-center justify-between shadow-card">
+      <div className="relative z-10 mb-3.5 p-4 liquid-glass rounded-2xl flex items-center justify-between shadow-card">
         <div>
           <div className="text-[10px] font-mono text-text-muted uppercase">ASSIGNED SLOT</div>
           <div className="font-mono text-xl font-bold tracking-wider text-text-primary">
@@ -524,7 +524,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
         </div>
 
         <div className="text-right flex flex-col items-end gap-1">
-          <div className="flex items-center gap-1 text-xs font-mono px-2 py-0.5 bg-bg-secondary border border-border text-accent-blue rounded-md">
+          <div className="flex items-center gap-1 text-xs font-mono px-2 py-0.5 liquid-glass-subtle text-accent-blue rounded-md">
             <Shield size={12} />
             <span>{participant?.priority || 'Normal'}</span>
           </div>
@@ -536,8 +536,8 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
       <div className="flex flex-col gap-3">
         {!isAudioLive ? (
           /* START MICROPHONE CALL TO ACTION (Direct User Gesture) */
-          <div className="w-full p-6 sm:p-7 bg-bg-card border border-border rounded-2xl text-center flex flex-col items-center gap-4 shadow-card">
-            <div className="w-16 h-16 rounded-2xl bg-bg-secondary border border-border text-accent-blue flex items-center justify-center shadow-sm">
+          <div className="w-full p-6 sm:p-7 liquid-glass rounded-3xl text-center flex flex-col items-center gap-4 shadow-card">
+            <div className="w-16 h-16 rounded-2xl liquid-glass-subtle text-accent-blue flex items-center justify-center shadow-sm">
               <Mic size={28} />
             </div>
 
@@ -574,12 +574,12 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
           <div className="w-full flex flex-col gap-3">
             {/* Main Broadcast Status Card */}
             <div
-              className={`w-full py-7 px-4 rounded-2xl border-2 text-center flex flex-col items-center justify-center transition-all ${
+              className={`w-full py-7 px-4 rounded-3xl border-2 text-center flex flex-col items-center justify-center transition-all ${
                 isLiveOnAir
-                  ? 'bg-bg-card border-accent-blue text-text-primary shadow-blue-glow ring-1 ring-accent-blue/30'
+                  ? 'liquid-glass-active border-accent-blue text-text-primary shadow-blue-glow ring-1 ring-accent-blue/30'
                   : isMutedState
-                  ? 'bg-bg-card border-border text-yellow-200'
-                  : 'bg-bg-card border-border text-text-primary'
+                  ? 'liquid-glass border-border text-yellow-200'
+                  : 'liquid-glass border-border text-text-primary'
               }`}
             >
               <div className="flex items-center gap-2 mb-1.5 font-mono text-xs uppercase tracking-widest">
@@ -617,7 +617,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
             </div>
 
             {/* Live Volume Meter */}
-            <div className="w-full p-4 bg-bg-card border border-border rounded-xl space-y-2 shadow-card">
+            <div className="w-full p-4 liquid-glass rounded-2xl space-y-2 shadow-card">
               <RetroVUMeter
                 level={isMuted ? 0 : audioLevel}
                 segments={18}

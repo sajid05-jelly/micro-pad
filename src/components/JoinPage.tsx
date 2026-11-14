@@ -91,10 +91,10 @@ export const JoinPage: React.FC<JoinPageProps> = ({
 
   return (
     <div className="min-h-screen bg-transparent text-text-primary flex items-center justify-center p-4 relative font-body">
-      <div className="relative z-10 w-full max-w-md bg-bg-card/90 backdrop-blur-xl border border-border p-6 sm:p-8 rounded-2xl shadow-card">
+      <div className="relative z-10 w-full max-w-md liquid-glass p-6 sm:p-8 rounded-3xl shadow-card">
         {/* Brand Header */}
         <div className="text-center pb-4 border-b border-border/80 mb-5">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-bg-secondary border border-border text-[10px] font-mono tracking-widest uppercase mb-3 text-accent-blue rounded-full shadow-sm">
+          <div className="inline-flex items-center gap-2 px-3 py-1 liquid-glass-subtle text-[10px] font-mono tracking-widest uppercase mb-3 text-accent-blue rounded-full shadow-sm">
             <Radio size={12} />
             <span>JOIN AS MICROPHONE</span>
           </div>
@@ -108,7 +108,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({
 
         {/* Server Connection Status Indicator */}
         {connectionStatus !== 'CONNECTED' && (
-          <div className="mb-4 p-3 bg-bg-secondary border border-border rounded-xl font-mono text-xs space-y-2">
+          <div className="mb-4 p-3 liquid-glass-subtle rounded-xl font-mono text-xs space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {connectionStatus === 'CONNECTING' ? (
@@ -143,7 +143,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({
 
         {/* Assigned Microphone Slot Badge (when joining via direct slot QR code) */}
         {assignedMicLabel && (
-          <div className="mb-4 p-3 bg-bg-secondary border border-accent-blue/30 rounded-xl flex items-center justify-between font-mono text-xs shadow-sm">
+          <div className="mb-4 p-3 liquid-glass-subtle border border-accent-blue/30 rounded-xl flex items-center justify-between font-mono text-xs shadow-sm">
             <div className="flex items-center gap-2">
               <Radio size={14} className="text-accent-blue animate-pulse" />
               <span className="text-text-secondary uppercase">ASSIGNED SLOT:</span>

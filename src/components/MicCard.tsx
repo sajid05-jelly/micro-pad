@@ -40,10 +40,10 @@ export const MicCard: React.FC<MicCardProps> = ({
 
   return (
     <div
-      className={`relative flex flex-col p-3.5 transition-all border rounded-xl ${
+      className={`relative flex flex-col p-3.5 transition-all rounded-2xl ${
         isSelected
-          ? 'bg-bg-card text-text-primary border-accent-blue shadow-lg shadow-accent-blue/15 ring-1 ring-accent-blue/40'
-          : 'bg-bg-card text-text-primary border-border hover:border-border-hover'
+          ? 'liquid-glass-active text-text-primary'
+          : 'liquid-glass text-text-primary hover:border-accent-blue/40'
       }`}
     >
       {/* Card Header: Channel & State */}

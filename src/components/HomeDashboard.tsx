@@ -31,10 +31,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     <div className="min-h-screen bg-transparent text-text-primary flex flex-col font-body relative">
 
       {/* Top Bar with Minimalist Brand & Status */}
-      <header className="relative z-10 border-b border-border/80 px-4 sm:px-8 py-3.5 flex items-center justify-between bg-bg-secondary/40 backdrop-blur-md">
+      <header className="relative z-10 px-4 sm:px-8 py-3.5 flex items-center justify-between liquid-glass-subtle rounded-b-2xl mx-2 sm:mx-6 mt-2 border-b border-border/80">
         <div className="flex items-center gap-3">
           {/* Audio Brand Mark */}
-          <div className="w-8 h-8 rounded-lg bg-bg-card border border-border text-accent-blue flex items-center justify-center shadow-sm">
+          <div className="w-8 h-8 rounded-lg liquid-glass-subtle text-accent-blue flex items-center justify-center shadow-sm">
             <Radio size={16} />
           </div>
           <div className="flex items-baseline gap-2">
@@ -50,18 +50,18 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         {/* Backend Connectivity Status */}
         <div className="flex items-center gap-2 font-mono text-xs">
           {connectionStatus === 'CONNECTED' ? (
-            <div className="flex items-center gap-2 px-3 py-1 bg-bg-card border border-border text-text-primary rounded-full text-[11px] font-medium shadow-sm">
+            <div className="flex items-center gap-2 px-3 py-1 liquid-glass-subtle text-text-primary rounded-full text-[11px] font-medium shadow-sm">
               <span className="w-2 h-2 rounded-full bg-accent-blue animate-pulse" />
               <span>SERVER READY</span>
             </div>
           ) : connectionStatus === 'CONNECTING' ? (
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-bg-card border border-border text-text-secondary rounded-full text-[11px]">
+            <div className="flex items-center gap-1.5 px-3 py-1 liquid-glass-subtle text-text-secondary rounded-full text-[11px]">
               <RefreshCw size={11} className="animate-spin text-accent-blue" />
               <span>CONNECTING...</span>
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-bg-card border border-red-500/40 text-red-300 rounded-full text-[11px]">
+              <div className="flex items-center gap-1.5 px-3 py-1 liquid-glass-subtle border-red-500/40 text-red-300 rounded-full text-[11px]">
                 <WifiOff size={11} />
                 <span>OFFLINE</span>
               </div>
@@ -80,7 +80,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       <main className="relative z-10 flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 py-10 sm:py-16 flex flex-col justify-center">
         {/* Hero Title */}
         <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 bg-bg-card border border-border text-xs font-mono uppercase tracking-widest text-text-secondary rounded-full mb-4 shadow-sm">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 liquid-glass-subtle text-xs font-mono uppercase tracking-widest text-text-secondary rounded-full mb-4 shadow-sm">
             <span className="w-1.5 h-1.5 rounded-full bg-accent-blue" />
             <span>WIRELESS PA MICROPHONE SYSTEM</span>
           </div>
@@ -98,10 +98,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         {/* 3 Main Action Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6 mb-12">
           {/* Card 1: Start a Session (Primary Action) */}
-          <div className="relative group p-6 rounded-xl bg-bg-card border border-border hover:border-accent-blue/50 transition-all duration-200 flex flex-col justify-between shadow-card">
+          <div className="relative group p-6 rounded-2xl liquid-glass liquid-glass-interactive flex flex-col justify-between shadow-card">
             <div>
-              <div className="w-11 h-11 rounded-lg bg-bg-secondary border border-border text-accent-blue flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform">
-                <Radio size={20} />
+              <div className="w-12 h-12 rounded-xl liquid-glass-subtle text-accent-blue flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform">
+                <Radio size={22} />
               </div>
               <div className="text-[11px] font-mono uppercase tracking-widest text-text-muted mb-1.5">
                 FOR EVENT HOSTS & STAGE
@@ -123,10 +123,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
 
           {/* Card 2: Join a Session */}
-          <div className="relative group p-6 rounded-xl bg-bg-card border border-border hover:border-border-hover transition-all duration-200 flex flex-col justify-between shadow-card">
+          <div className="relative group p-6 rounded-2xl liquid-glass liquid-glass-interactive flex flex-col justify-between shadow-card">
             <div>
-              <div className="w-11 h-11 rounded-lg bg-bg-secondary border border-border text-text-secondary group-hover:text-text-primary flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform">
-                <Smartphone size={20} />
+              <div className="w-12 h-12 rounded-xl liquid-glass-subtle text-text-secondary group-hover:text-accent-blue flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform">
+                <Smartphone size={22} />
               </div>
               <div className="text-[11px] font-mono uppercase tracking-widest text-text-muted mb-1.5">
                 FOR SPEAKERS & PARTICIPANTS
@@ -140,7 +140,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </div>
             <button
               onClick={onJoinSession}
-              className="w-full py-3 px-4 bg-bg-secondary border border-border text-text-primary font-heading font-semibold text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 hover:bg-bg-elevated hover:border-border-hover transition-all"
+              className="w-full py-3 px-4 liquid-glass-subtle text-text-primary font-heading font-semibold text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 hover:border-accent-blue/50 transition-all"
             >
               <span>Connect Microphone</span>
               <ArrowRight size={14} />
@@ -148,10 +148,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
 
           {/* Card 3: Open Control Room */}
-          <div className="relative group p-6 rounded-xl bg-bg-card border border-border hover:border-border-hover transition-all duration-200 flex flex-col justify-between shadow-card">
+          <div className="relative group p-6 rounded-2xl liquid-glass liquid-glass-interactive flex flex-col justify-between shadow-card">
             <div>
-              <div className="w-11 h-11 rounded-lg bg-bg-secondary border border-border text-text-secondary group-hover:text-text-primary flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform">
-                <Sliders size={20} />
+              <div className="w-12 h-12 rounded-xl liquid-glass-subtle text-text-secondary group-hover:text-accent-blue flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform">
+                <Sliders size={22} />
               </div>
               <div className="text-[11px] font-mono uppercase tracking-widest text-text-muted mb-1.5">
                 FOR SOUND ENGINEERS
@@ -165,7 +165,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </div>
             <button
               onClick={onOpenControlRoom}
-              className="w-full py-3 px-4 bg-bg-secondary border border-border text-text-primary font-heading font-semibold text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 hover:bg-bg-elevated hover:border-border-hover transition-all"
+              className="w-full py-3 px-4 liquid-glass-subtle text-text-primary font-heading font-semibold text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 hover:border-accent-blue/50 transition-all"
             >
               <span>Enter Control Room</span>
               <ArrowRight size={14} />
@@ -174,13 +174,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         {/* 3-Step Explanation Section */}
-        <div className="border border-border rounded-xl p-6 bg-bg-card shadow-card">
+        <div className="rounded-2xl p-6 sm:p-8 liquid-glass shadow-card">
           <div className="text-xs font-mono font-bold uppercase tracking-widest text-text-muted mb-4 text-center">
             HOW IT WORKS IN 3 SIMPLE STEPS
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center sm:text-left">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-bg-secondary border border-border text-accent-blue font-mono font-bold flex items-center justify-center text-sm shrink-0">
+              <div className="w-9 h-9 rounded-full liquid-glass-subtle text-accent-blue font-mono font-bold flex items-center justify-center text-sm shrink-0 shadow-sm">
                 1
               </div>
               <div>
@@ -192,7 +192,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </div>
 
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-bg-secondary border border-border text-accent-blue font-mono font-bold flex items-center justify-center text-sm shrink-0">
+              <div className="w-9 h-9 rounded-full liquid-glass-subtle text-accent-blue font-mono font-bold flex items-center justify-center text-sm shrink-0 shadow-sm">
                 2
               </div>
               <div>
@@ -204,7 +204,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
             </div>
 
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-bg-secondary border border-border text-accent-blue font-mono font-bold flex items-center justify-center text-sm shrink-0">
+              <div className="w-9 h-9 rounded-full liquid-glass-subtle text-accent-blue font-mono font-bold flex items-center justify-center text-sm shrink-0 shadow-sm">
                 3
               </div>
               <div>
