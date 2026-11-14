@@ -226,13 +226,13 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-border mb-3">
           <div className="flex items-center gap-2">
             <QrCode size={18} className="text-text-primary" />
-            <h3 className="font-heading font-bold text-base tracking-wider uppercase">
-              {channelNumber ? `PAIR TRANSMITTER // MIC ${String(channelNumber).padStart(2, '0')}` : 'PAIR TRANSMITTER // GATEWAY'}
+            <h3 className="font-heading font-black text-base tracking-wider uppercase">
+              {channelNumber ? `CONNECT PHONE // MIC ${String(channelNumber).padStart(2, '0')}` : 'SCAN TO CONNECT MICROPHONE'}
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-text-secondary hover:text-white border border-transparent hover:border-border"
+            className="p-1 text-text-secondary hover:text-white border border-transparent hover:border-border rounded"
           >
             <X size={16} />
           </button>

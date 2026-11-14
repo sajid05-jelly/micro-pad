@@ -37,7 +37,13 @@ import {
   Terminal,
   ArrowRight,
   RefreshCw,
-  User
+  User,
+  Copy,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Home,
+  Smartphone
 } from 'lucide-react';
 
 interface AdminControlRoomProps {
@@ -46,6 +52,7 @@ interface AdminControlRoomProps {
   localIp: string;
   tunnelUrl?: string | null;
   hostAudio: HostAudioEngine;
+  onGoHome?: () => void;
 }
 
 export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
@@ -53,7 +60,8 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
   sessionId,
   localIp,
   tunnelUrl,
-  hostAudio
+  hostAudio,
+  onGoHome
 }) => {
   const [session, setSession] = useState<SessionState | null>(null);
   const [activeTab, setActiveTab] = useState<'control' | 'mics' | 'auto' | 'output' | 'diagnostics'>('control');
@@ -64,6 +72,9 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
   const [peerStatsMap, setPeerStatsMap] = useState<Record<string, PeerNetworkStats>>({});
   const [channelTrimMap, setChannelTrimMap] = useState<Record<string, number>>({});
   const [audioEngineState, setAudioEngineState] = useState<AudioContextState | 'uninitialized'>('uninitialized');
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [masterVolume, setMasterVolume] = useState(100);
+  const [showAdvancedDiagnostics, setShowAdvancedDiagnostics] = useState(false);
 
   // Keep audio context state in sync and unlock on any user interaction
   useEffect(() => {
@@ -125,6 +136,36 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
   const handleTrimChange = (participantId: string, trim: number) => {
     hostAudio.setChannelTrim(participantId, trim);
     setChannelTrimMap(prev => ({ ...prev, [participantId]: trim }));
+  };
+
+  const handleCopyLink = () => {
+    const isPublicHttpsHost = typeof window !== 'undefined' && 
+      window.location.protocol === 'https:' && 
+      !window.location.hostname.includes('localhost') && 
+      !window.location.hostname.startsWith('172.') && 
+      !window.location.hostname.startsWith('192.') && 
+      !window.location.hostname.startsWith('10.');
+
+    const effectiveIp = (localIp && localIp !== 'localhost' && localIp !== '127.0.0.1' && !localIp.startsWith('169.254.'))
+      ? localIp
+      : (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+          ? window.location.hostname
+          : '172.20.10.5');
+
+    const base = isPublicHttpsHost ? window.location.origin : (tunnelUrl ? tunnelUrl : `http://${effectiveIp}:5173`);
+    const url = `${base}/join?session=${encodeURIComponent(sessionId)}&role=join`;
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+      }).catch(() => {});
+    }
+  };
+
+  const handleMasterVolumeChange = (volPercent: number) => {
+    setMasterVolume(volPercent);
+    hostAudio.setMasterVolume(volPercent / 100);
   };
 
   // Sync activeTab with URL search params and hash (supports bookmarking and back/forward buttons)
@@ -379,10 +420,10 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
       <header className="bg-bg-secondary border-b border-border px-4 py-2.5 flex items-center justify-between select-none">
         {/* Left Wordmark & Session */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={onGoHome} title="Go to Home Dashboard">
             <Radio size={18} className="text-text-primary animate-pulse" />
             <h1 className="font-heading font-black text-xl tracking-widest uppercase">
-              MICRO PAD
+              MICRO MAX
             </h1>
           </div>
           <div className="h-5 w-px bg-border" />
@@ -437,6 +478,17 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
 
         {/* Right Session Controls */}
         <div className="flex items-center gap-2">
+          {onGoHome && (
+            <button
+              onClick={onGoHome}
+              className="px-2.5 py-1.5 bg-bg-main border border-border text-xs font-mono text-text-secondary hover:text-white hover:border-text-primary btn-tactile flex items-center gap-1.5"
+              title="Return to Home Dashboard"
+            >
+              <Home size={13} />
+              <span className="hidden sm:inline">HOME</span>
+            </button>
+          )}
+
           {/* QR Code Join Modal Button */}
           <button
             onClick={() => {
@@ -553,123 +605,109 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
         <main className="flex-1 flex flex-col p-4 gap-4 overflow-y-auto">
 
           {/* ============================================================== */}
-          {/* TAB 1: CONTROL ROOM (MASTER AIR MONITOR & PRIMARY BUS)         */}
+          {/* TAB 1: CONTROL ROOM (4 PRIMARY SECTIONS)                       */}
           {/* ============================================================== */}
           {activeTab === 'control' && (
-            <div className="flex flex-col gap-4">
-              {/* Page Title & Breadcrumb */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border gap-2">
-                <div>
-                  <div className="text-[10px] font-mono text-text-muted uppercase tracking-widest font-bold">
-                    CONSOLE // MASTER CONTROL ROOM
+            <div className="flex flex-col gap-5">
+              {/* ==================== 1. SESSION SECTION ==================== */}
+              <section className="p-4 bg-bg-elevated border-2 border-border rounded-lg shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-md bg-white text-black flex items-center justify-center font-bold">
+                    <Radio size={20} className={activeSpeaker ? 'animate-pulse' : ''} />
                   </div>
-                  <h2 className="font-heading font-black text-lg tracking-wider uppercase text-text-primary">
-                    LIVE AIR MONITOR &amp; PRIMARY AUDIO BUS
-                  </h2>
-                </div>
-                <div className="flex items-center gap-2 text-xs font-mono">
-                  <span className="px-2 py-1 bg-bg-elevated border border-border text-text-secondary">
-                    {session?.mode === 'auto' ? 'AUTO VAD ARBITRATION' : 'MANUAL BUS OVERRIDE'}
-                  </span>
-                  <button
-                    onClick={() => handleTabChange('mics')}
-                    className="px-2.5 py-1 bg-bg-main border border-border text-text-primary hover:border-text-primary btn-tactile flex items-center gap-1.5"
-                  >
-                    <Radio size={12} />
-                    <span>MANAGE MICS ({participants.length})</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Master Output Banner */}
-              <section className="relative p-4 bg-bg-elevated border-2 border-border rounded-sm shadow-panel flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="absolute top-2 left-2 rack-screw opacity-60" />
-                <div className="absolute top-2 right-2 rack-screw opacity-60" />
-
-                <div className="flex-1 w-full flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] text-text-muted uppercase tracking-widest font-bold">
-                      CURRENT MASTER BUS ROUTE
-                    </span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 bg-bg-main border border-border text-text-secondary">
-                      {session?.mode === 'auto' ? `AUTO // ${session.selectionReason}` : 'MANUAL OVERRIDE'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-baseline gap-3 my-1">
-                    <span className="font-heading font-black text-3xl tracking-wider text-text-primary uppercase">
-                      {session?.isEmergencyStop
-                        ? '[ EMERGENCY STOP ACTIVE ]'
-                        : session?.isMuteAll
-                        ? '[ ALL MICROPHONES MUTED ]'
-                        : activeSpeaker
-                        ? `MIC ${String(activeSpeaker.channelNumber).padStart(2, '0')}`
-                        : '[ NO ACTIVE SPEAKER ]'}
-                    </span>
-                    {activeSpeaker && !session?.isEmergencyStop && !session?.isMuteAll && (
-                      <span className="font-mono text-base text-text-secondary font-medium">
-                        — {activeSpeaker.name}
+                  <div>
+                    <div className="text-[10px] font-mono text-text-muted uppercase tracking-wider font-semibold">
+                      ACTIVE SESSION
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-heading font-black text-2xl tracking-wider text-text-primary">
+                        {sessionId}
                       </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-3 text-xs font-mono text-text-muted">
-                    <span>Priority: <strong className="text-text-primary">{activeSpeaker?.priority || '—'}</strong></span>
-                    <span>•</span>
-                    <span>Routing: <strong className="text-text-primary">{activeSpeaker ? 'EXCLUSIVE AUDIBLE' : 'CLAMPED / SILENT'}</strong></span>
-                    <span>•</span>
-                    <span>Hold [1, 2, 3] on keyboard for rapid switching</span>
+                      <span className="text-xs font-mono text-text-secondary">
+                        ({session?.sessionName || 'STAGE BROADCAST'})
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Master Hardware VU Meter */}
-                <div className="w-full md:w-80 p-3 bg-bg-main border border-border rounded-sm">
-                  <RetroVUMeter
-                    level={session?.isEmergencyStop || session?.isMuteAll ? 0 : masterAudioLevel}
-                    segments={22}
-                    height="h-5"
-                    showLabels={true}
-                    label="MASTER PA BUS OUTPUT LEVEL"
-                  />
-                </div>
+                <div className="flex items-center flex-wrap gap-2.5">
+                  {/* Connected Phone Count */}
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-main border border-border rounded font-mono text-xs">
+                    <span className={`w-2 h-2 rounded-full ${participants.length > 0 ? 'bg-green-400 animate-pulse' : 'bg-text-muted'}`} />
+                    <span className="font-bold text-text-primary">
+                      {participants.length} Phone{participants.length === 1 ? '' : 's'} Connected
+                    </span>
+                  </div>
 
-                {/* Master Quick Actions */}
-                <div className="flex md:flex-col gap-2">
+                  {/* Copy Link Button */}
                   <button
-                    onClick={async () => {
-                      await hostAudio.initAudio();
-                      hostAudio.playTestChime();
-                    }}
-                    title="Play 440Hz broadcast calibration test tone"
-                    className="px-3 py-2 bg-text-primary text-text-inverse border border-white font-mono text-xs font-bold uppercase tracking-wider btn-tactile hover:bg-white/90 flex items-center justify-center gap-1.5 shadow-sm"
+                    onClick={handleCopyLink}
+                    className="px-3 py-1.5 bg-bg-main border border-border text-xs font-mono text-text-primary hover:border-white rounded btn-tactile flex items-center gap-1.5"
+                    title="Copy direct join link to clipboard"
                   >
-                    <Volume2 size={13} />
-                    <span>TEST 440Hz CHIME</span>
+                    {copiedLink ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
+                    <span>{copiedLink ? 'COPIED!' : 'COPY JOIN LINK'}</span>
                   </button>
 
+                  {/* Connect Phones (QR Code) Button */}
                   <button
-                    onClick={() => handleSelectMic(null)}
-                    disabled={!activeSpeaker}
-                    className="px-3 py-2 bg-bg-main border border-border font-mono text-xs uppercase tracking-wider text-text-secondary hover:text-text-primary hover:border-text-primary btn-tactile disabled:opacity-30 disabled:pointer-events-none"
+                    onClick={() => {
+                      setQrChannelNumber(undefined);
+                      setIsQRModalOpen(true);
+                    }}
+                    className="px-3.5 py-1.5 bg-white text-black font-mono font-bold text-xs uppercase rounded hover:bg-neutral-200 btn-tactile flex items-center gap-1.5 shadow-sm"
                   >
-                    UNROUTE FLOOR
+                    <QrCode size={14} />
+                    <span>SHOW QR CODE</span>
                   </button>
                 </div>
               </section>
 
-              {/* Primary Quick Bus (MIC 01, 02, 03) */}
-              <section className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-mono text-xs font-bold uppercase tracking-widest text-text-secondary flex items-center gap-1.5">
-                    <span>PRIMARY BROADCAST BUS</span>
-                    <span className="text-[10px] text-text-muted">[HOTKEYS: 1, 2, 3]</span>
-                  </h3>
-                  <span className="text-[10px] font-mono text-text-muted">
-                    EXCLUSIVE MANUAL OVERRIDE
-                  </span>
+              {/* ==================== 2. MICROPHONE CONTROL ==================== */}
+              <section className="p-4 bg-bg-elevated border-2 border-border rounded-lg space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-border/60 gap-2">
+                  <div>
+                    <h3 className="font-heading font-black text-base uppercase tracking-wider text-text-primary flex items-center gap-2">
+                      <span>MICROPHONE CONTROL</span>
+                      {activeSpeaker && (
+                        <span className="text-xs font-mono font-bold text-green-400 px-2 py-0.5 bg-green-950/40 border border-green-500/40 rounded-full flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                          <span>MIC {String(activeSpeaker.channelNumber).padStart(2, '0')} LIVE</span>
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-xs text-text-secondary mt-0.5">
+                      Click any microphone slot to switch the live speaker floor.
+                    </p>
+                  </div>
+
+                  {/* Auto Mode Switch */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleToggleMode(session?.mode === 'auto' ? 'manual' : 'auto')}
+                      className={`px-3 py-1.5 rounded font-mono text-xs font-bold uppercase border transition-all flex items-center gap-2 ${
+                        session?.mode === 'auto'
+                          ? 'bg-green-950/30 text-green-300 border-green-500 hover:bg-green-950/50'
+                          : 'bg-bg-main text-text-secondary border-border hover:border-text-primary'
+                      }`}
+                    >
+                      <Cpu size={13} className={session?.mode === 'auto' ? 'text-green-400' : ''} />
+                      <span>{session?.mode === 'auto' ? 'AUTO-SWITCHING: ON' : 'AUTO-SWITCHING: OFF'}</span>
+                    </button>
+                    {activeSpeaker && (
+                      <button
+                        onClick={() => handleSelectMic(null)}
+                        className="px-2.5 py-1.5 bg-bg-main border border-border text-xs font-mono text-text-secondary hover:text-text-primary rounded"
+                        title="Un-route current speaker floor"
+                      >
+                        UNROUTE
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Tactile Channel Cards (MIC 1, MIC 2, MIC 3) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
                   {quickSlots.map(({ channelNumber, participant }) => {
                     const isSelected = !!participant && session?.activeSpeakerId === participant.id;
                     const label = `MIC ${String(channelNumber).padStart(2, '0')}`;
@@ -678,23 +716,25 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                       return (
                         <div
                           key={channelNumber}
-                          className="p-4 bg-bg-elevated border border-dashed border-border rounded-sm flex flex-col justify-between h-28 opacity-60"
+                          className="p-4 bg-bg-main border border-dashed border-border rounded-lg flex flex-col justify-between h-32 hover:border-text-secondary transition-colors"
                         >
                           <div className="flex justify-between items-center">
                             <span className="font-mono text-xs font-bold text-text-muted">{label}</span>
-                            <span className="text-[10px] font-mono text-text-muted">EMPTY BUS</span>
+                            <span className="text-[10px] font-mono text-text-muted px-1.5 py-0.5 bg-bg-elevated border border-border rounded">
+                              AVAILABLE
+                            </span>
                           </div>
-                          <div className="text-xs font-mono text-text-muted">
-                            Scan QR code to assign handset
+                          <div className="text-xs text-text-muted font-mono">
+                            No phone connected
                           </div>
                           <button
                             onClick={() => {
                               setQrChannelNumber(channelNumber);
                               setIsQRModalOpen(true);
                             }}
-                            className="text-[10px] font-mono text-text-secondary hover:text-white underline text-left"
+                            className="text-xs font-mono text-text-primary hover:underline flex items-center gap-1 font-semibold"
                           >
-                            + Connect mobile device
+                            <span>+ Connect as {label}</span>
                           </button>
                         </div>
                       );
@@ -719,65 +759,296 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                 </div>
               </section>
 
-              {/* Master Studio Status Overview */}
-              <section className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="p-3 bg-bg-elevated border border-border rounded-sm flex flex-col justify-between">
+              {/* ==================== 3. AUDIO OUTPUT SECTION ==================== */}
+              <section className="p-4 bg-bg-elevated border-2 border-border rounded-lg space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-border/60 gap-2">
                   <div>
-                    <div className="text-[10px] font-mono text-text-muted uppercase">AUDIO OUTPUT STAGE</div>
-                    <div className="font-mono text-sm font-bold text-text-primary mt-1">
-                      {session?.isEmergencyStop ? 'EMERGENCY STOPPED' : session?.isMuteAll ? 'ALL CHANNELS MUTED' : 'PA AUDIO AUDIBLE'}
-                    </div>
-                    <div className="text-xs font-mono text-text-secondary mt-0.5">
-                      Bluetooth / Host Output Active
-                    </div>
+                    <h3 className="font-heading font-black text-base uppercase tracking-wider text-text-primary flex items-center gap-2">
+                      <Volume2 size={18} />
+                      <span>AUDIO OUTPUT &amp; PA SPEAKERS</span>
+                    </h3>
+                    <p className="text-xs text-text-secondary mt-0.5">
+                      Verify sound output, adjust master room volume, or silence all channels.
+                    </p>
                   </div>
-                  <button
-                    onClick={() => handleTabChange('output')}
-                    className="mt-3 text-xs font-mono text-text-primary hover:underline flex items-center gap-1"
-                  >
-                    <span>Configure Output Stage</span>
-                    <ArrowRight size={12} />
-                  </button>
+
+                  {/* Output Status Pill */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleEngageAudio}
+                      className={`px-3 py-1 rounded-full text-xs font-mono font-bold flex items-center gap-1.5 border transition-all ${
+                        audioEngineState === 'running'
+                          ? 'bg-green-950/30 text-green-400 border-green-500/40'
+                          : 'bg-yellow-950/30 text-yellow-300 border-yellow-500/40 animate-pulse'
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${audioEngineState === 'running' ? 'bg-green-400' : 'bg-yellow-400'}`} />
+                      <span>{audioEngineState === 'running' ? 'PA OUTPUT LIVE' : 'CLICK TO UNMUTE PA'}</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="p-3 bg-bg-elevated border border-border rounded-sm flex flex-col justify-between">
-                  <div>
-                    <div className="text-[10px] font-mono text-text-muted uppercase">WIRELESS HANDSET BUS</div>
-                    <div className="font-mono text-sm font-bold text-text-primary mt-1">
-                      {participants.length} CONNECTED / {activeCount} ON AIR
-                    </div>
-                    <div className="text-xs font-mono text-text-secondary mt-0.5">
-                      {readyCount} Standby • {mutedCount} Muted
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                  {/* Master Hardware VU Meter */}
+                  <div className="p-3 bg-bg-main border border-border rounded-lg">
+                    <RetroVUMeter
+                      level={session?.isEmergencyStop || session?.isMuteAll ? 0 : masterAudioLevel}
+                      segments={22}
+                      height="h-5"
+                      showLabels={true}
+                      label="MASTER PA OUTPUT LEVEL"
+                    />
                   </div>
-                  <button
-                    onClick={() => handleTabChange('mics')}
-                    className="mt-3 text-xs font-mono text-text-primary hover:underline flex items-center gap-1"
-                  >
-                    <span>Open Channel Rack ({participants.length})</span>
-                    <ArrowRight size={12} />
-                  </button>
-                </div>
 
-                <div className="p-3 bg-bg-elevated border border-border rounded-sm flex flex-col justify-between">
-                  <div>
-                    <div className="text-[10px] font-mono text-text-muted uppercase">ARBITRATION ENGINE</div>
-                    <div className="font-mono text-sm font-bold text-text-primary mt-1 uppercase">
-                      {session?.mode || 'MANUAL'} MODE
+                  {/* Master Volume Slider */}
+                  <div className="p-3 bg-bg-main border border-border rounded-lg space-y-1.5">
+                    <div className="flex justify-between items-center text-xs font-mono">
+                      <span className="text-text-secondary font-semibold">MASTER VOLUME</span>
+                      <span className="font-bold text-text-primary">{masterVolume}%</span>
                     </div>
-                    <div className="text-xs font-mono text-text-secondary mt-0.5">
-                      Decision: {session?.selectionReason || 'INITIAL_IDLE'}
-                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={masterVolume}
+                      onChange={(e) => handleMasterVolumeChange(Number(e.target.value))}
+                      className="w-full accent-white bg-bg-secondary cursor-pointer"
+                    />
                   </div>
-                  <button
-                    onClick={() => handleTabChange('auto')}
-                    className="mt-3 text-xs font-mono text-text-primary hover:underline flex items-center gap-1"
-                  >
-                    <span>Tune Floor Arbitration</span>
-                    <ArrowRight size={12} />
-                  </button>
+
+                  {/* Audio Actions: Test Sound & Mute All */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        await hostAudio.initAudio();
+                        hostAudio.playTestChime();
+                      }}
+                      className="flex-1 py-3 px-3 bg-white text-black font-mono text-xs font-bold uppercase rounded hover:bg-neutral-200 btn-tactile flex items-center justify-center gap-1.5 shadow-sm"
+                    >
+                      <Volume2 size={14} />
+                      <span>PLAY TEST CHIME</span>
+                    </button>
+
+                    <button
+                      onClick={handleToggleMuteAll}
+                      className={`flex-1 py-3 px-3 border font-mono text-xs font-bold uppercase rounded btn-tactile flex items-center justify-center gap-1.5 ${
+                        session?.isMuteAll
+                          ? 'bg-red-500 text-white border-red-400'
+                          : 'bg-bg-main text-text-primary border-border hover:border-white'
+                      }`}
+                    >
+                      <VolumeX size={14} />
+                      <span>{session?.isMuteAll ? 'UNMUTE ALL' : 'MUTE ALL'}</span>
+                    </button>
+                  </div>
                 </div>
               </section>
+
+              {/* ==================== 4. PARTICIPANTS SECTION ==================== */}
+              <section className="p-4 bg-bg-elevated border-2 border-border rounded-lg space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-border/60">
+                  <h3 className="font-heading font-black text-base uppercase tracking-wider text-text-primary flex items-center gap-2">
+                    <Users size={16} />
+                    <span>CONNECTED PARTICIPANTS ({participants.length})</span>
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setQrChannelNumber(undefined);
+                      setIsQRModalOpen(true);
+                    }}
+                    className="text-xs font-mono text-text-primary hover:underline flex items-center gap-1 font-bold"
+                  >
+                    <span>+ Invite More</span>
+                  </button>
+                </div>
+
+                {participants.length === 0 ? (
+                  <div className="p-8 text-center bg-bg-main border border-dashed border-border rounded-lg space-y-3">
+                    <Smartphone size={32} className="mx-auto text-text-muted opacity-60" />
+                    <p className="text-sm text-text-secondary font-mono">
+                      No mobile microphones connected yet.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setQrChannelNumber(undefined);
+                        setIsQRModalOpen(true);
+                      }}
+                      className="px-4 py-2 bg-white text-black font-bold font-mono text-xs uppercase rounded hover:bg-neutral-200"
+                    >
+                      SHOW QR CODE TO JOIN
+                    </button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left font-mono text-xs">
+                      <thead>
+                        <tr className="border-b border-border text-text-muted text-[10px] uppercase">
+                          <th className="py-2 px-3">SLOT</th>
+                          <th className="py-2 px-3">NAME</th>
+                          <th className="py-2 px-3">STATUS</th>
+                          <th className="py-2 px-3">LIVE INPUT</th>
+                          <th className="py-2 px-3 text-right">ACTIONS</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40">
+                        {participants.map(p => {
+                          const isLive = session?.activeSpeakerId === p.id;
+                          const isMuted = p.isMutedByAdmin || p.isMutedSelf || session?.isMuteAll || session?.isEmergencyStop;
+                          return (
+                            <tr key={p.id} className={`hover:bg-bg-main/50 transition-colors ${isLive ? 'bg-green-950/20' : ''}`}>
+                              <td className="py-2.5 px-3 font-bold text-text-primary">
+                                MIC {String(p.channelNumber).padStart(2, '0')}
+                              </td>
+                              <td className="py-2.5 px-3">
+                                <span className="font-semibold text-text-primary">{p.name}</span>
+                                <span className="ml-2 text-[10px] text-text-muted">({p.priority})</span>
+                              </td>
+                              <td className="py-2.5 px-3">
+                                {isLive ? (
+                                  <span className="text-green-400 font-bold flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                                    <span>LIVE ON AIR</span>
+                                  </span>
+                                ) : isMuted ? (
+                                  <span className="text-yellow-400 font-bold">MUTED</span>
+                                ) : (
+                                  <span className="text-text-muted">STANDBY</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-3 w-40">
+                                <div className="h-2 bg-bg-main border border-border rounded overflow-hidden">
+                                  <div
+                                    className={`h-full transition-all duration-75 ${isLive ? 'bg-green-400' : 'bg-text-secondary'}`}
+                                    style={{ width: `${p.audioLevel || 0}%` }}
+                                  />
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3 text-right space-x-2">
+                                <button
+                                  onClick={() => handleSelectMic(isLive ? null : p.id)}
+                                  className={`px-2 py-1 rounded text-[11px] font-bold uppercase ${
+                                    isLive
+                                      ? 'bg-neutral-800 text-text-secondary border border-border hover:text-white'
+                                      : 'bg-white text-black hover:bg-neutral-200'
+                                  }`}
+                                >
+                                  {isLive ? 'UNROUTE' : 'MAKE LIVE'}
+                                </button>
+                                <button
+                                  onClick={() => handleToggleMuteParticipant(p.id, !isMuted)}
+                                  className="px-2 py-1 bg-bg-main border border-border hover:border-white rounded text-[11px] text-text-secondary hover:text-white uppercase"
+                                >
+                                  {isMuted ? 'UNMUTE' : 'MUTE'}
+                                </button>
+                                <button
+                                  onClick={() => handleKickParticipant(p.id)}
+                                  className="px-2 py-1 bg-bg-main border border-border hover:border-red-400 rounded text-[11px] text-red-400 uppercase"
+                                  title="Disconnect handset"
+                                >
+                                  DISCONNECT
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+
+              {/* ==================== COLLAPSIBLE ADVANCED DIAGNOSTICS ==================== */}
+              <div className="bg-bg-elevated border border-border rounded-lg overflow-hidden text-xs">
+                <button
+                  onClick={() => setShowAdvancedDiagnostics(!showAdvancedDiagnostics)}
+                  className="w-full p-3 flex items-center justify-between text-text-secondary hover:text-text-primary font-mono font-bold uppercase tracking-wider bg-bg-secondary/40"
+                >
+                  <div className="flex items-center gap-2">
+                    <Settings size={14} className="text-text-primary" />
+                    <span>ADVANCED SYSTEM DIAGNOSTICS &amp; TELEMETRY</span>
+                  </div>
+                  {showAdvancedDiagnostics ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
+
+                {showAdvancedDiagnostics && (
+                  <div className="p-4 border-t border-border space-y-4 font-mono text-xs">
+                    {/* Auto Arbitration Timers */}
+                    <div className="p-3 bg-bg-main border border-border rounded-lg space-y-2">
+                      <div className="text-[11px] font-bold text-text-primary uppercase">
+                        ARBITRATION TUNING
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
+                        <div>
+                          <div className="flex justify-between text-text-secondary mb-1">
+                            <span>SILENCE TIMEOUT:</span>
+                            <span className="font-bold text-text-primary">{session?.arbitrationConfig?.silenceTimeoutMs || 1200} ms</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={400}
+                            max={3000}
+                            step={100}
+                            value={session?.arbitrationConfig?.silenceTimeoutMs || 1200}
+                            onChange={(e) => handleUpdateConfig({ silenceTimeoutMs: Number(e.target.value) })}
+                            className="w-full accent-white"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-text-secondary mb-1">
+                            <span>SPEAKER LOCK:</span>
+                            <span className="font-bold text-text-primary">{session?.arbitrationConfig?.speakerLockMs || 1500} ms</span>
+                          </div>
+                          <input
+                            type="range"
+                            min={500}
+                            max={4000}
+                            step={100}
+                            value={session?.arbitrationConfig?.speakerLockMs || 1500}
+                            onChange={(e) => handleUpdateConfig({ speakerLockMs: Number(e.target.value) })}
+                            className="w-full accent-white"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Virtual Simulator */}
+                    <div className="p-3 bg-bg-main border border-border rounded-lg flex items-center justify-between flex-wrap gap-2">
+                      <div>
+                        <div className="text-[11px] font-bold text-text-primary uppercase">SIMULATED PHONE INJECTOR</div>
+                        <div className="text-[10px] text-text-muted">Inject test handset to test auto arbitration locally</div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleInjectVirtualParticipant('Simulated VIP', 'VIP')}
+                          className="px-2.5 py-1 bg-bg-elevated border border-border hover:border-white text-[10px] font-bold uppercase rounded"
+                        >
+                          + INJECT VIP
+                        </button>
+                        <button
+                          onClick={() => handleInjectVirtualParticipant('Simulated Speaker', 'Normal')}
+                          className="px-2.5 py-1 bg-bg-elevated border border-border hover:border-white text-[10px] font-bold uppercase rounded"
+                        >
+                          + INJECT SPEAKER
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Network & Event Log */}
+                    <div className="p-3 bg-bg-main border border-border rounded-lg space-y-1.5 text-[11px]">
+                      <div className="text-[10px] text-text-muted uppercase">RECENT CONSOLE EVENTS</div>
+                      <div className="max-h-36 overflow-y-auto space-y-1 text-[10px] text-text-secondary">
+                        {(session?.recentEvents || []).slice(0, 10).map(evt => (
+                          <div key={evt.id} className="flex gap-2">
+                            <span className="text-text-muted">[{evt.timestamp}]</span>
+                            <span className="font-bold text-text-primary">{evt.message}</span>
+                            {evt.details && <span className="text-text-muted truncate">— {evt.details}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

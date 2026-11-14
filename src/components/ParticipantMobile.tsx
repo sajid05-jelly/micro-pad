@@ -70,7 +70,8 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
   const [sensitivity, setSensitivity] = useState<number>(1.0);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [vocalProfile, setVocalProfile] = useState<'stage' | 'conference'>('stage');
-  const [showDiagnostics, setShowDiagnostics] = useState<boolean>(true);
+  const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [showDiagnostics, setShowDiagnostics] = useState<boolean>(false);
 
   // Isolated Local Hardware Mic Test state (Section B)
   const [isLocalTestRunning, setIsLocalTestRunning] = useState<boolean>(false);
@@ -365,22 +366,28 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
   const isMutedState = isMuted || participant?.isMutedByAdmin || session?.isMuteAll || session?.isEmergencyStop;
   const isLiveOnAir = isAssignedFloor && isAudioLive && !isMutedState;
 
-  return (
-    <div className="min-h-screen bg-bg-main text-text-primary flex flex-col p-4 w-full sm:max-w-md mx-auto relative select-none overflow-y-auto">
-      {/* Retro hardware rack screws */}
-      <div className="absolute top-2 left-2 rack-screw opacity-60" />
-      <div className="absolute top-2 right-2 rack-screw opacity-60" />
-      <div className="absolute bottom-2 left-2 rack-screw opacity-60" />
-      <div className="absolute bottom-2 right-2 rack-screw opacity-60" />
+  const handleLeaveConfirm = () => {
+    if (confirm('Are you sure you want to disconnect and leave this session?')) {
+      onLeave();
+    }
+  };
 
+  return (
+    <div className="min-h-screen bg-bg-main text-text-primary flex flex-col p-4 w-full sm:max-w-md mx-auto relative select-none">
       {/* Header */}
-      <header className="flex items-center justify-between pb-3 border-b border-border my-2">
-        <div>
-          <h1 className="font-heading font-bold text-lg tracking-widest uppercase">MICRO PAD</h1>
-          <div className="text-[10px] font-mono text-text-muted uppercase">
-            TX-UNIT // HANDSET TRANSMITTER
+      <header className="flex items-center justify-between pb-3 border-b border-border mb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded bg-white text-black flex items-center justify-center font-bold">
+            <Radio size={16} className={isLiveOnAir ? 'animate-pulse' : ''} />
+          </div>
+          <div>
+            <h1 className="font-heading font-black text-base tracking-wider uppercase">MICRO MAX</h1>
+            <div className="text-[10px] font-mono text-text-muted">
+              WIRELESS MICROPHONE
+            </div>
           </div>
         </div>
+
         <div className="text-right font-mono">
           <div className="text-xs font-bold text-text-primary">
             {sessionId}
@@ -403,16 +410,16 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
 
       {/* Connection Offline Banner */}
       {connectionStatus !== 'CONNECTED' && (
-        <div className="my-2 p-2.5 bg-bg-elevated border-2 border-border rounded-sm flex items-center justify-between text-xs font-mono">
+        <div className="mb-3 p-3 bg-bg-elevated border-2 border-border rounded-lg flex items-center justify-between text-xs font-mono">
           <div className="flex items-center gap-2">
             <WifiOff size={14} className="text-text-primary shrink-0" />
             <span className="truncate max-w-[200px]">
-              {connectionError || (connectionStatus === 'CONNECTING' ? 'Re-linking to console...' : 'Console link lost')}
+              {connectionError || (connectionStatus === 'CONNECTING' ? 'Connecting to speaker...' : 'Console link lost')}
             </span>
           </div>
           <button
             onClick={onRetryConnection}
-            className="px-2 py-1 bg-text-primary text-text-inverse font-bold text-[10px] uppercase btn-tactile hover:bg-white/90 flex items-center gap-1 shrink-0"
+            className="px-2.5 py-1 bg-white text-black font-bold text-[10px] uppercase rounded hover:bg-neutral-200 flex items-center gap-1 shrink-0"
           >
             <RefreshCw size={10} />
             <span>RETRY</span>
@@ -422,153 +429,64 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
 
       {/* AudioContext Suspended Warning (Mobile Browser Gesture Required) */}
       {diagnostics && diagnostics.audioContextState === 'suspended' && (
-        <div className="my-2 p-2.5 bg-bg-elevated border-2 border-yellow-400 rounded-sm flex items-center justify-between text-xs font-mono">
+        <div className="mb-3 p-3 bg-bg-elevated border-2 border-yellow-400 rounded-lg flex items-center justify-between text-xs font-mono">
           <div className="flex items-center gap-2 text-yellow-400">
             <AlertCircle size={14} className="shrink-0" />
             <span className="text-[11px] font-bold">AUDIO ENGINE SUSPENDED</span>
           </div>
           <button
             onClick={handleResumeAudioContext}
-            className="px-2.5 py-1 bg-text-primary text-text-inverse font-bold text-[10px] uppercase btn-tactile hover:bg-white/90 shrink-0"
+            className="px-3 py-1 bg-white text-black font-bold text-[10px] uppercase rounded hover:bg-neutral-200 shrink-0"
           >
             RESUME MIC
           </button>
         </div>
       )}
 
-      {/* Main Channel & Call Sign Banner */}
-      <div className="my-2 p-3 bg-bg-elevated border border-border rounded-sm flex items-center justify-between">
+      {/* Main Channel & Call Sign Info */}
+      <div className="mb-3 p-3.5 bg-bg-elevated border border-border rounded-lg flex items-center justify-between">
         <div>
-          <div className="text-[10px] font-mono text-text-muted uppercase">ASSIGNED CHANNEL</div>
-          <div className="font-mono text-2xl font-bold tracking-wider text-text-primary">
+          <div className="text-[10px] font-mono text-text-muted uppercase">ASSIGNED SLOT</div>
+          <div className="font-mono text-xl font-bold tracking-wider text-text-primary">
             {channelTag}
           </div>
           <div className="text-xs font-body text-text-secondary mt-0.5">
-            Call Sign: <strong className="text-text-primary">{participant?.name || initialParticipantName || 'Participant'}</strong>
+            Name: <strong className="text-text-primary">{participant?.name || initialParticipantName || 'Speaker'}</strong>
           </div>
         </div>
 
         <div className="text-right flex flex-col items-end gap-1">
-          <div className="flex items-center gap-1 text-xs font-mono px-2 py-0.5 bg-bg-main border border-border">
+          <div className="flex items-center gap-1 text-xs font-mono px-2 py-0.5 bg-bg-main border border-border rounded">
             <Shield size={12} />
             <span>{participant?.priority || 'Normal'}</span>
           </div>
-          <span className="text-[9px] font-mono text-text-muted uppercase">PRIORITY LEVEL</span>
+          <span className="text-[9px] font-mono text-text-muted uppercase">PRIORITY</span>
         </div>
-      </div>
-
-      {/* ISOLATED LOCAL HARDWARE MIC TEST (SECTION B) */}
-      <div className="my-1 p-3 bg-bg-elevated border-2 border-border rounded-sm space-y-2.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-xs font-mono font-bold">
-            <Activity size={13} className={isLocalTestRunning ? 'text-green-400 animate-pulse' : 'text-text-primary'} />
-            <span>LOCAL MIC TEST</span>
-          </div>
-          <button
-            onClick={handleToggleLocalTest}
-            className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase btn-tactile flex items-center gap-1 border ${
-              isLocalTestRunning
-                ? 'bg-red-500 text-white border-red-400 hover:bg-red-600'
-                : 'bg-text-primary text-text-inverse border-white hover:bg-white/90'
-            }`}
-          >
-            {isLocalTestRunning ? <Square size={10} /> : <Play size={10} />}
-            <span>{isLocalTestRunning ? 'STOP TEST' : 'START LOCAL TEST'}</span>
-          </button>
-        </div>
-
-        <p className="text-[10px] font-mono text-text-muted">
-          Verifies physical ADC microphone capture directly without depending on WebRTC, server, or admin floor.
-        </p>
-
-        {localTestError && (
-          <div className="p-2 border border-red-500 bg-red-950/20 text-red-400 text-[10px] font-mono flex items-center gap-1.5">
-            <AlertCircle size={12} className="shrink-0" />
-            <span>{localTestError}</span>
-          </div>
-        )}
-
-        {isLocalTestRunning && localTestData && (
-          <div className="space-y-2 pt-2 border-t border-border/50">
-            <div
-              className={`py-1.5 px-2 rounded-sm border text-center font-mono text-xs font-bold uppercase transition-all ${
-                localTestData.isVoiceDetected
-                  ? 'bg-green-500/20 border-green-400 text-green-300 animate-pulse'
-                  : 'bg-bg-main border-border text-text-muted'
-              }`}
-            >
-              {localTestData.isVoiceDetected
-                ? '● VOICE DETECTED (INPUT EXCEEDS THRESHOLD)'
-                : 'LISTENING... SPEAK INTO PHONE MICROPHONE'}
-            </div>
-
-            <RetroVUMeter
-              level={localTestData.levelPct}
-              segments={16}
-              height="h-4"
-              showLabels={true}
-              numericValue={
-                localTestData.db !== -Infinity
-                  ? `${localTestData.db} dBFS (${localTestData.levelPct}%)`
-                  : '-INF dB (0%)'
-              }
-              label="LOCAL HARDWARE ADC INPUT"
-            />
-
-            <div className="grid grid-cols-3 gap-1 font-mono text-[9px] text-center">
-              <div className="p-1.5 bg-bg-main border border-border">
-                <span className="text-text-muted block text-[8px]">RMS</span>
-                <span className="font-bold text-text-primary">{localTestData.rms.toFixed(4)}</span>
-              </div>
-              <div className="p-1.5 bg-bg-main border border-border">
-                <span className="text-text-muted block text-[8px]">PEAK</span>
-                <span className="font-bold text-text-primary">{localTestData.peak.toFixed(2)}</span>
-              </div>
-              <div className="p-1.5 bg-bg-main border border-border">
-                <span className="text-text-muted block text-[8px]">dBFS</span>
-                <span className="font-bold text-text-primary">
-                  {localTestData.db !== -Infinity ? `${localTestData.db}` : '-INF'}
-                </span>
-              </div>
-            </div>
-
-            <div className="p-1.5 bg-bg-main border border-border font-mono text-[9px]">
-              <div className="text-text-muted text-[8px] mb-0.5">ADC FLOAT SAMPLES (FIRST 8):</div>
-              <div className="text-text-primary font-mono truncate">
-                [{localTestData.samplePreview.map((v) => (v >= 0 ? `+${v.toFixed(3)}` : v.toFixed(3))).join(', ')}]
-              </div>
-            </div>
-
-            <div className="text-[9px] font-mono text-text-muted truncate">
-              DEVICE: <strong className="text-text-primary">{localTestData.deviceLabel}</strong>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Primary Interaction Area: Start Mic CTA OR Live Instrument */}
-      <div className="my-2 flex flex-col gap-3">
+      <div className="flex flex-col gap-3">
         {!isAudioLive ? (
           /* START MICROPHONE CALL TO ACTION (Direct User Gesture) */
-          <div className="w-full p-5 bg-bg-elevated border-2 border-border rounded-sm text-center flex flex-col items-center gap-3">
-            <div className="w-14 h-14 rounded-full bg-bg-main border-2 border-border flex items-center justify-center">
-              <Mic size={24} className="text-text-primary" />
+          <div className="w-full p-6 bg-bg-elevated border-2 border-border rounded-lg text-center flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center shadow-lg">
+              <Mic size={28} />
             </div>
 
             <div>
-              <h3 className="font-heading font-bold text-sm uppercase tracking-wider text-text-primary">
-                MICROPHONE CAPTURE REQUIRED
+              <h3 className="font-heading font-bold text-base uppercase tracking-wider text-text-primary">
+                ENABLE YOUR MICROPHONE
               </h3>
-              <p className="text-xs text-text-secondary font-mono mt-1">
-                Tap below to grant microphone access and start the local audio capture engine.
+              <p className="text-xs text-text-secondary mt-1 max-w-xs mx-auto">
+                Tap below and allow microphone permission so your voice can play on the room’s PA speakers.
               </p>
             </div>
 
             {permissionError && (
-              <div className="w-full p-2.5 border-2 border-border bg-bg-main text-xs font-mono text-text-primary flex items-start gap-2 text-left">
-                <AlertCircle size={14} className="shrink-0 mt-0.5" />
+              <div className="w-full p-3 border-2 border-red-500/50 bg-red-950/20 text-xs font-mono text-red-300 rounded flex items-start gap-2 text-left">
+                <AlertCircle size={14} className="shrink-0 mt-0.5 text-red-400" />
                 <div className="space-y-1">
-                  <div className="font-bold text-[10px] uppercase">AUDIO PERMISSION ERROR</div>
+                  <div className="font-bold text-[10px] uppercase">PERMISSION NOTICE</div>
                   <div className="text-[11px] text-text-secondary font-body">{permissionError}</div>
                 </div>
               </div>
@@ -577,59 +495,61 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
             <button
               onClick={() => handleEnableMicrophone()}
               disabled={isStartingMic}
-              className="w-full py-3.5 bg-text-primary text-text-inverse font-mono font-bold tracking-wider uppercase text-sm border border-white btn-tactile hover:bg-white/90 shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-4 bg-white text-black font-heading font-bold tracking-wider uppercase text-sm rounded-lg hover:bg-neutral-200 shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 transition-transform active:scale-[0.98]"
             >
-              <Mic size={16} />
-              <span>{isStartingMic ? 'INITIALIZING MIC...' : 'START MICROPHONE'}</span>
+              <Mic size={18} />
+              <span>{isStartingMic ? 'STARTING MIC...' : 'START MICROPHONE'}</span>
             </button>
           </div>
         ) : (
           /* VERIFIED LIVE TRANSMITTER INTERFACE */
           <div className="w-full flex flex-col gap-3">
-            {/* Main Stage Broadcast Status Indicator */}
+            {/* Main Broadcast Status Card */}
             <div
-              className={`w-full py-8 px-4 rounded-sm border-2 text-center flex flex-col items-center justify-center transition-all ${
+              className={`w-full py-7 px-4 rounded-xl border-2 text-center flex flex-col items-center justify-center transition-all ${
                 isLiveOnAir
-                  ? 'bg-text-primary text-text-inverse border-white shadow-2xl scale-[1.01]'
+                  ? 'bg-green-950/30 border-green-400 text-white shadow-xl shadow-green-950/20'
                   : isMutedState
-                  ? 'bg-bg-elevated text-text-muted border-dashed border-border'
-                  : 'bg-bg-elevated text-text-primary border-border'
+                  ? 'bg-amber-950/20 border-yellow-500/60 text-yellow-200'
+                  : 'bg-bg-elevated border-border text-text-primary'
               }`}
             >
-              <div className="flex items-center gap-2 mb-1 font-mono text-xs uppercase tracking-widest">
-                <Radio size={14} className={isLiveOnAir ? 'animate-pulse' : ''} />
-                <span>BROADCAST STATUS</span>
+              <div className="flex items-center gap-2 mb-1.5 font-mono text-xs uppercase tracking-widest">
+                <Radio size={14} className={isLiveOnAir ? 'text-green-400 animate-pulse' : ''} />
+                <span>
+                  {isLiveOnAir ? 'BROADCAST STATUS: LIVE' : isMutedState ? 'BROADCAST STATUS: MUTED' : 'BROADCAST STATUS: READY'}
+                </span>
               </div>
 
-              <div className="font-heading font-black text-2xl sm:text-3xl tracking-widest my-1 uppercase">
+              <div className="font-heading font-black text-2xl sm:text-3xl tracking-wide my-1 uppercase">
                 {session?.isEmergencyStop
                   ? 'EMERGENCY STOP'
                   : session?.isMuteAll
                   ? 'ALL MICS MUTED'
                   : participant?.isMutedByAdmin
-                  ? 'MUTED BY ADMIN'
+                  ? 'MUTED BY HOST'
                   : isMuted
-                  ? 'TRANSMITTER MUTED'
+                  ? 'MICROPHONE MUTED'
                   : isLiveOnAir
-                  ? '★ ON AIR // LIVE'
+                  ? '● YOU ARE LIVE'
                   : isAssignedFloor
-                  ? 'FLOOR GRANTED'
-                  : 'STANDBY // READY'}
+                  ? 'FLOOR ASSIGNED'
+                  : 'MICROPHONE READY'}
               </div>
 
-              <div className="font-mono text-[11px] mt-1.5 max-w-xs leading-relaxed">
+              <div className="text-xs mt-1.5 max-w-xs leading-relaxed opacity-90">
                 {isLiveOnAir
-                  ? 'VOICE IS LIVE AND ROUTED TO THE MAIN PA SYSTEM'
+                  ? 'Your voice is broadcasting live through the PA speaker right now!'
                   : isMutedState
-                  ? 'TRANSMITTER IS SILENCED'
+                  ? 'Your microphone is silenced. Tap unmute below to speak.'
                   : session?.mode === 'auto'
-                  ? 'Speak to trigger automatic VAD floor arbitration'
-                  : 'Waiting for sound engineer to assign floor'}
+                  ? 'Speak into your phone to automatically take the floor.'
+                  : 'Connected! Waiting for host to give you the floor.'}
               </div>
             </div>
 
-            {/* Hardware Live VU Meter & Exact Numeric Display */}
-            <div className="w-full p-3.5 bg-bg-elevated border border-border rounded-sm space-y-2">
+            {/* Live Volume Meter */}
+            <div className="w-full p-4 bg-bg-elevated border border-border rounded-xl space-y-2">
               <RetroVUMeter
                 level={isMuted ? 0 : audioLevel}
                 segments={18}
@@ -638,189 +558,215 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
                 numericValue={
                   isMuted
                     ? 'MUTED'
-                    : dbLevel !== -Infinity
-                    ? `${dbLevel} dBFS (${audioLevel}%)`
-                    : '-INF dB (0%)'
+                    : isSpeaking
+                    ? '● VOICE DETECTED'
+                    : audioLevel > 5
+                    ? `${audioLevel}%`
+                    : 'IDLE'
                 }
                 label={
                   isMuted
-                    ? 'TRANSMITTER MUTED'
+                    ? 'MICROPHONE MUTED'
                     : isSpeaking
-                    ? '● VOICE ACTIVITY ACTIVE'
-                    : 'TRANSMITTER INPUT LEVEL'
+                    ? '● LIVE VOICE LEVEL'
+                    : 'MICROPHONE INPUT LEVEL'
                 }
               />
-
-              <div className="flex items-center justify-between font-mono text-[10px] text-text-muted pt-1 border-t border-border/50">
-                <span>RMS: <strong className="text-text-primary">{rawRms.toFixed(4)}</strong></span>
-                <span>PEAK: <strong className="text-text-primary">{peakLevel.toFixed(2)}</strong></span>
-                <span>VAD: <strong className={isSpeaking ? 'text-green-400 font-bold' : 'text-text-muted'}>
-                  {isSpeaking ? 'VOICE DETECTED' : 'IDLE'}
-                </strong></span>
-              </div>
             </div>
 
-            {/* Tactile Mute Toggle */}
+            {/* GIANT TOUCH-FRIENDLY MUTE / UNMUTE BUTTON (Minimum 64px height) */}
             <button
               onClick={handleToggleMute}
-              className={`w-full py-3 px-4 border font-mono font-bold tracking-wider uppercase text-xs btn-tactile flex items-center justify-center gap-2 ${
+              className={`w-full py-4 px-6 rounded-xl font-heading font-black tracking-wider uppercase text-base flex items-center justify-center gap-3 transition-all duration-150 active:scale-[0.98] shadow-lg ${
                 isMuted
-                  ? 'bg-bg-secondary text-text-secondary border-border hover:border-text-primary'
-                  : 'bg-text-primary text-text-inverse border-white hover:bg-white/90'
+                  ? 'bg-white text-black hover:bg-neutral-200 border-2 border-white'
+                  : 'bg-bg-elevated text-red-400 hover:text-red-300 border-2 border-red-500/50 hover:border-red-400'
               }`}
             >
-              {isMuted ? <MicOff size={16} /> : <Mic size={16} />}
-              <span>{isMuted ? 'UNMUTE TRANSMITTER' : 'MUTE MICROPHONE'}</span>
+              {isMuted ? (
+                <>
+                  <Mic size={22} className="animate-pulse" />
+                  <span>TAP TO UNMUTE & SPEAK</span>
+                </>
+              ) : (
+                <>
+                  <MicOff size={22} />
+                  <span>TAP TO MUTE MICROPHONE</span>
+                </>
+              )}
             </button>
           </div>
         )}
       </div>
 
-      {/* Pre-amp Sensitivity & Vocal Mode */}
-      {isAudioLive && (
-        <div className="my-2 p-3 bg-bg-elevated border border-border rounded-sm text-xs font-mono space-y-2.5">
-          <div className="space-y-1">
-            <div className="flex items-center justify-between text-text-secondary">
-              <span className="flex items-center gap-1.5">
-                <Sliders size={12} />
-                <span>PRE-AMP GAIN TRIM</span>
-              </span>
-              <span className="text-text-primary font-bold">{Math.round(sensitivity * 100)}%</span>
-            </div>
-            <input
-              type="range"
-              min={0.5}
-              max={2.5}
-              step={0.1}
-              value={sensitivity}
-              onChange={(e) => handleSensitivityChange(Number(e.target.value))}
-              className="w-full accent-white bg-bg-main cursor-pointer"
-            />
-          </div>
-
-          <div className="pt-2 border-t border-border/50 flex items-center justify-between">
-            <div>
-              <div className="text-[10px] font-bold text-text-primary uppercase">
-                {vocalProfile === 'stage' ? 'STAGE PA VOCAL MODE' : 'CONFERENCE CALL MODE'}
-              </div>
-              <div className="text-[9px] text-text-muted">
-                {vocalProfile === 'stage' ? 'Raw venue warmth (AEC/DSP ducking disabled)' : 'DSP noise gating enabled'}
-              </div>
-            </div>
-            <button
-              onClick={async () => {
-                const nextMode = vocalProfile === 'stage' ? 'conference' : 'stage';
-                setVocalProfile(nextMode);
-                if (audioEngineRef.current) {
-                  await audioEngineRef.current.switchProfile(nextMode);
-                }
-              }}
-              className="px-2 py-1 bg-bg-main border border-border text-[10px] hover:border-text-primary text-text-primary uppercase"
-            >
-              SWITCH
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Hardware Diagnostic Tray (Expandable Real-Time Telemetry) */}
-      <div className="my-2 bg-bg-elevated border border-border rounded-sm text-xs font-mono">
+      {/* OPTIONAL ACCORDION: Audio Settings & Hardware Test */}
+      <div className="mt-4 bg-bg-elevated border border-border rounded-xl overflow-hidden text-xs">
         <button
-          onClick={() => setShowDiagnostics(!showDiagnostics)}
-          className="w-full p-2.5 flex items-center justify-between text-text-secondary hover:text-text-primary font-bold text-[11px] uppercase"
+          onClick={() => setShowSettings(!showSettings)}
+          className="w-full p-3.5 flex items-center justify-between text-text-secondary hover:text-text-primary font-bold uppercase tracking-wider font-mono bg-bg-secondary/40"
         >
-          <div className="flex items-center gap-1.5">
-            <Activity size={13} className="text-text-primary" />
-            <span>TRANSMITTER HARDWARE TELEMETRY</span>
+          <div className="flex items-center gap-2">
+            <Sliders size={14} className="text-white" />
+            <span>AUDIO SETTINGS & HARDWARE TEST</span>
           </div>
-          {showDiagnostics ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          {showSettings ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
 
-        {showDiagnostics && (
-          <div className="p-3 pt-0 border-t border-border/50 space-y-2 text-[10px] font-mono">
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              <div className="p-2 bg-bg-main border border-border">
-                <span className="text-text-muted block text-[9px]">SECURE CONTEXT</span>
-                <span className={typeof window !== 'undefined' && window.isSecureContext ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>
-                  {typeof window !== 'undefined' && window.isSecureContext ? 'TRUE (HTTPS / LOCAL)' : 'FALSE (INSECURE)'}
-                </span>
+        {showSettings && (
+          <div className="p-4 border-t border-border space-y-4 font-mono">
+            {/* ISOLATED LOCAL HARDWARE MIC TEST */}
+            <div className="p-3 bg-bg-main border border-border rounded-lg space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <Activity size={13} className={isLocalTestRunning ? 'text-green-400 animate-pulse' : 'text-text-primary'} />
+                  <span>LOCAL MIC TEST</span>
+                </div>
+                <button
+                  onClick={handleToggleLocalTest}
+                  className={`px-3 py-1 text-[11px] font-mono font-bold uppercase rounded flex items-center gap-1.5 ${
+                    isLocalTestRunning
+                      ? 'bg-red-500 text-white hover:bg-red-600'
+                      : 'bg-white text-black hover:bg-neutral-200'
+                  }`}
+                >
+                  {isLocalTestRunning ? <Square size={11} /> : <Play size={11} />}
+                  <span>{isLocalTestRunning ? 'STOP TEST' : 'START TEST'}</span>
+                </button>
               </div>
 
-              <div className="p-2 bg-bg-main border border-border">
-                <span className="text-text-muted block text-[9px]">MIC PERMISSION</span>
-                <span className={micPermissionState === 'granted' ? 'text-green-400 font-bold' : 'text-yellow-400 font-bold'}>
-                  {micPermissionState.toUpperCase()}
-                </span>
-              </div>
+              <p className="text-[10px] text-text-muted">
+                Speak into phone to test microphone locally without streaming to the PA speakers.
+              </p>
 
-              <div className="p-2 bg-bg-main border border-border">
-                <span className="text-text-muted block text-[9px]">AUDIO TRACK</span>
-                <span className="text-text-primary font-bold">
-                  {diagnostics?.trackCount ? `${diagnostics.trackReadyState.toUpperCase()} (${diagnostics.trackCount}ch)` : 'NO TRACK'}
-                </span>
-              </div>
+              {localTestError && (
+                <div className="p-2 border border-red-500 bg-red-950/20 text-red-400 text-[10px] rounded flex items-center gap-1.5">
+                  <AlertCircle size={12} className="shrink-0" />
+                  <span>{localTestError}</span>
+                </div>
+              )}
 
-              <div className="p-2 bg-bg-main border border-border">
-                <span className="text-text-muted block text-[9px]">AUDIO CONTEXT</span>
-                <span className={diagnostics?.audioContextState === 'running' ? 'text-green-400 font-bold' : 'text-yellow-400 font-bold'}>
-                  {diagnostics?.audioContextState ? diagnostics.audioContextState.toUpperCase() : 'NONE'}
-                </span>
-              </div>
+              {isLocalTestRunning && localTestData && (
+                <div className="space-y-2 pt-2 border-t border-border/50">
+                  <div
+                    className={`py-1.5 px-2 rounded border text-center font-mono text-xs font-bold uppercase transition-all ${
+                      localTestData.isVoiceDetected
+                        ? 'bg-green-500/20 border-green-400 text-green-300 animate-pulse'
+                        : 'bg-bg-main border-border text-text-muted'
+                    }`}
+                  >
+                    {localTestData.isVoiceDetected
+                      ? '● VOICE DETECTED'
+                      : 'LISTENING... SPEAK INTO PHONE'}
+                  </div>
+
+                  <RetroVUMeter
+                    level={localTestData.levelPct}
+                    segments={16}
+                    height="h-4"
+                    showLabels={false}
+                    label="LOCAL ADC INPUT"
+                  />
+                  <div className="text-[10px] text-text-muted truncate">
+                    DEVICE: <strong className="text-text-primary">{localTestData.deviceLabel}</strong>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Active Microphone Device Name */}
-            {diagnostics && diagnostics.trackLabel && (
-              <div className="p-2 bg-bg-main border border-border flex items-center justify-between">
-                <span className="text-text-muted text-[9px]">DEVICE:</span>
-                <span className="text-text-primary font-bold truncate max-w-[200px]">
-                  {diagnostics.trackLabel}
-                </span>
+            {/* Mic Sensitivity / Gain Slider */}
+            {isAudioLive && (
+              <div className="p-3 bg-bg-main border border-border rounded-lg space-y-2">
+                <div className="flex items-center justify-between text-text-secondary text-[11px]">
+                  <span>MICROPHONE GAIN / SENSITIVITY:</span>
+                  <span className="text-text-primary font-bold">{Math.round(sensitivity * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0.5}
+                  max={2.5}
+                  step={0.1}
+                  value={sensitivity}
+                  onChange={(e) => handleSensitivityChange(Number(e.target.value))}
+                  className="w-full accent-white bg-bg-main cursor-pointer"
+                />
               </div>
             )}
 
-            {/* WebRTC RF Network Stats */}
-            <div className="p-2 bg-bg-main border border-border space-y-1">
-              <div className="flex items-center justify-between text-text-secondary">
-                <span>WI-FI RF RTT:</span>
-                <span className="text-text-primary font-bold">{netStats && netStats.rttMs > 0 ? `${netStats.rttMs} ms` : 'SYNCED'}</span>
+            {/* Voice Profile Switch */}
+            {isAudioLive && (
+              <div className="p-3 bg-bg-main border border-border rounded-lg flex items-center justify-between">
+                <div>
+                  <div className="text-[11px] font-bold text-text-primary uppercase">
+                    {vocalProfile === 'stage' ? 'STAGE PA VOCAL MODE' : 'CONFERENCE CALL MODE'}
+                  </div>
+                  <div className="text-[10px] text-text-muted">
+                    {vocalProfile === 'stage' ? 'Natural warm tone for venue speakers' : 'DSP noise gating enabled'}
+                  </div>
+                </div>
+                <button
+                  onClick={async () => {
+                    const nextMode = vocalProfile === 'stage' ? 'conference' : 'stage';
+                    setVocalProfile(nextMode);
+                    if (audioEngineRef.current) {
+                      await audioEngineRef.current.switchProfile(nextMode);
+                    }
+                  }}
+                  className="px-2.5 py-1 bg-bg-elevated border border-border text-[10px] hover:border-white text-text-primary uppercase rounded"
+                >
+                  SWITCH
+                </button>
               </div>
-              <div className="flex items-center justify-between text-text-secondary">
-                <span>OUTBOUND BITRATE:</span>
-                <span className="text-text-primary font-bold">{netStats?.bitrateKbps || 0} kbps</span>
-              </div>
-              <div className="flex items-center justify-between text-text-secondary">
-                <span>RTP PACKETS SENT:</span>
-                <span className="text-text-primary font-bold">{netStats?.packetsSent || 0}</span>
-              </div>
-              <div className="flex items-center justify-between text-text-secondary">
-                <span>OUTBOUND BYTES:</span>
-                <span className="text-text-primary font-bold">{netStats?.bytesSent ? `${Math.round(netStats.bytesSent / 1024)} KB` : '0 KB'}</span>
-              </div>
-            </div>
+            )}
 
-            {/* Quick Restart Microphone Action */}
-            <button
-              onClick={() => handleEnableMicrophone()}
-              className="w-full py-1.5 bg-bg-main border border-border text-text-secondary hover:text-text-primary text-[10px] font-bold uppercase btn-tactile flex items-center justify-center gap-1.5"
-            >
-              <RefreshCw size={11} />
-              <span>RESTART AUDIO CAPTURE</span>
-            </button>
+            {/* Expandable Technical Telemetry */}
+            <div className="pt-2 border-t border-border/50">
+              <button
+                onClick={() => setShowDiagnostics(!showDiagnostics)}
+                className="text-[10px] text-text-muted hover:text-text-primary flex items-center justify-between w-full uppercase"
+              >
+                <span>Technical Network Stats</span>
+                {showDiagnostics ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              </button>
+
+              {showDiagnostics && (
+                <div className="mt-2 space-y-1.5 text-[10px] text-text-secondary bg-bg-main p-2.5 border border-border rounded">
+                  <div className="flex justify-between">
+                    <span>WI-FI RF RTT:</span>
+                    <span className="font-bold text-text-primary">{netStats && netStats.rttMs > 0 ? `${netStats.rttMs} ms` : 'SYNCED'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>BITRATE:</span>
+                    <span className="font-bold text-text-primary">{netStats?.bitrateKbps || 0} kbps</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>AUDIO CONTEXT:</span>
+                    <span className="font-bold text-text-primary">{diagnostics?.audioContextState || 'NONE'}</span>
+                  </div>
+                  <button
+                    onClick={() => handleEnableMicrophone()}
+                    className="w-full mt-2 py-1.5 bg-bg-elevated border border-border text-[10px] font-bold uppercase rounded hover:border-white text-text-primary flex items-center justify-center gap-1"
+                  >
+                    <RefreshCw size={10} />
+                    <span>RESTART AUDIO CAPTURE</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Footer / Leave Session */}
-      <footer className="pt-3 border-t border-border flex items-center justify-between mt-auto">
+      {/* Footer / Disconnect & Leave */}
+      <footer className="pt-4 border-t border-border mt-auto flex items-center justify-between">
         <div className="text-[10px] font-mono text-text-muted">
-          HARDWARE REVISION: 1.0 // B.TECH CSE
+          MICRO MAX // HANDSET TX
         </div>
         <button
-          onClick={onLeave}
-          className="flex items-center gap-1 text-xs font-mono text-text-secondary hover:text-text-primary border border-transparent hover:border-border px-2 py-1"
+          onClick={handleLeaveConfirm}
+          className="flex items-center gap-1.5 text-xs font-mono text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-400 px-3 py-1.5 rounded transition-colors"
         >
           <LogOut size={13} />
-          <span>LEAVE SESSION</span>
+          <span>DISCONNECT & LEAVE</span>
         </button>
       </footer>
     </div>

@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { optimizeOpusSDP } from '../src/audio/HostAudioEngine.js';
 
-console.log('=== [MICRO PAD] AUDIO PIPELINE & PERFORMANCE TEST ===\n');
+console.log('=== [MICRO MAX] AUDIO PIPELINE & PERFORMANCE TEST ===\n');
 
 // 1. WebRTC Opus SDP Optimization Test
 console.log('1. Testing WebRTC Opus SDP Optimization (Distance Resilience & High Fidelity)...');

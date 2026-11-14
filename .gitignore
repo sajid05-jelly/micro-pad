@@ -37,4 +37,5 @@ Thumbs.db
 # Temporary & Cache
 .temp/
 .cache/
+.netlify/
 .system_generated/

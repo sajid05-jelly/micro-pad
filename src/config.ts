@@ -1,4 +1,4 @@
-// MICRO PAD Environment & Endpoint Configuration
+// MICRO MAX Environment & Endpoint Configuration
 
 export const BACKEND_URL = (
   (typeof import.meta !== 'undefined' && (import.meta.env?.VITE_BACKEND_URL || import.meta.env?.VITE_SERVER_URL)) ||

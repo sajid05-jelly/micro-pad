@@ -11,6 +11,7 @@ interface JoinPageProps {
   onRetryConnection: () => void;
   onJoin: (sessionId: string, name: string, priority: PriorityLevel, channelNumber?: number, stream?: MediaStream) => void;
   onOpenAdmin: () => void;
+  onGoHome?: () => void;
 }
 
 export const JoinPage: React.FC<JoinPageProps> = ({
@@ -21,7 +22,8 @@ export const JoinPage: React.FC<JoinPageProps> = ({
   connectionError,
   onRetryConnection,
   onJoin,
-  onOpenAdmin
+  onOpenAdmin,
+  onGoHome
 }) => {
   const [sessionId, setSessionId] = useState(initialSessionId);
   const [name, setName] = useState('');
@@ -100,10 +102,10 @@ export const JoinPage: React.FC<JoinPageProps> = ({
         <div className="text-center pb-4 border-b border-border mb-4">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 bg-bg-main border border-border text-[10px] font-mono tracking-widest uppercase mb-2">
             <Radio size={12} className="text-text-primary" />
-            <span>WIRELESS TRANSMITTER GATEWAY</span>
+            <span>JOIN AS MICROPHONE</span>
           </div>
           <h1 className="font-heading font-black text-2xl tracking-widest uppercase text-text-primary">
-            MICRO PAD
+            MICRO MAX
           </h1>
           <p className="text-xs text-text-secondary font-mono mt-1">
             Turn your smartphone into a wireless PA microphone
@@ -173,7 +175,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({
           {/* Session ID Input */}
           <div className="space-y-1">
             <label className="text-[10px] text-text-muted uppercase tracking-wider block">
-              EVENT SESSION CODE
+              SESSION CODE
             </label>
             <input
               type="text"
@@ -188,14 +190,14 @@ export const JoinPage: React.FC<JoinPageProps> = ({
           {/* Participant Call Sign */}
           <div className="space-y-1">
             <label className="text-[10px] text-text-muted uppercase tracking-wider block">
-              PARTICIPANT NAME / CALL SIGN
+              YOUR NAME
             </label>
             <div className="relative">
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="E.G. PROF. SHARMA / SPEAKER 1"
+                placeholder="E.G. ALEX / SPEAKER 1"
                 required
                 className="w-full bg-bg-main border border-border text-text-primary p-2.5 rounded-sm font-mono text-sm focus:border-text-primary"
               />
@@ -206,7 +208,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({
           {/* Priority Selection */}
           <div className="space-y-1">
             <label className="text-[10px] text-text-muted uppercase tracking-wider block">
-              SPEAKER ROLE / PRIORITY
+              ROLE / PRIORITY
             </label>
             <div className="grid grid-cols-3 gap-2">
               {(['VIP', 'Normal', 'Low'] as PriorityLevel[]).map((level) => (
@@ -229,26 +231,35 @@ export const JoinPage: React.FC<JoinPageProps> = ({
           {/* Guidelines */}
           <div className="p-3 bg-bg-main border border-border text-[11px] font-body text-text-secondary space-y-1">
             <div className="font-mono text-[9px] text-text-muted uppercase tracking-wider font-semibold">
-              PRE-FLIGHT CHECK
+              BEFORE YOU CONNECT
             </div>
-            <p>&bull; Tapping Connect Transmitter will request microphone access.</p>
-            <p>&bull; Keep device on the same local Wi-Fi / hotspot network as the PA host.</p>
+            <p>&bull; Tap Connect Microphone and allow browser microphone permission when asked.</p>
+            <p>&bull; Stay connected to the same Wi-Fi / hotspot as the speaker laptop.</p>
           </div>
 
           {/* Submit Button */}
           <button
             type="submit"
             disabled={isRequestingMic}
-            className="w-full py-3 bg-text-primary text-text-inverse font-mono font-bold text-sm tracking-wider uppercase border border-white btn-tactile hover:bg-white/90 flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
+            className="w-full py-3.5 bg-text-primary text-text-inverse font-mono font-bold text-sm tracking-wider uppercase border border-white btn-tactile hover:bg-white/90 flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
           >
-            <span>{isRequestingMic ? 'INITIALIZING MIC...' : 'CONNECT TRANSMITTER'}</span>
+            <span>{isRequestingMic ? 'STARTING MIC...' : 'CONNECT MICROPHONE'}</span>
             <ArrowRight size={16} />
           </button>
         </form>
 
-        {/* Switch to Admin Mode Link */}
+        {/* Navigation Links */}
         <div className="mt-6 pt-4 border-t border-border flex items-center justify-between text-[11px] font-mono">
-          <span className="text-text-muted">Sound Engineer / Admin?</span>
+          {onGoHome ? (
+            <button
+              onClick={onGoHome}
+              className="text-text-muted hover:text-text-primary uppercase tracking-wider"
+            >
+              &larr; Home
+            </button>
+          ) : (
+            <span className="text-text-muted">Host or Sound Tech?</span>
+          )}
           <button
             onClick={onOpenAdmin}
             className="text-text-primary hover:underline uppercase tracking-wider"

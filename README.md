@@ -1,13 +1,13 @@
-# MICRO PAD // Futuristic Retro Monochrome Wireless Microphone & PA System
+# MICRO MAX // Wireless Microphone & PA System
 
-> **A real-time, local-network wireless microphone and audio distribution console.**  
-> Built for laptops connected to venue Bluetooth/Wired PA speakers with multi-handset streaming, exclusive routing, and intelligent Voice Activity Detection (VAD) floor arbitration.
+> **"Your phone is now a wireless microphone."**  
+> A real-time wireless microphone and audio distribution console. Built for laptops connected to venue Bluetooth/Wired PA speakers with multi-handset streaming, exclusive routing, and intelligent Voice Activity Detection (VAD) floor arbitration.
 
 ---
 
 ## 1. System Overview
 
-MICRO PAD transforms smartphones into low-latency wireless microphones for events, stage panels, classroom lectures, and community PA systems without requiring any expensive cloud subscriptions or paid third-party infrastructure.
+MICRO MAX transforms smartphones into ultra-low-latency wireless microphones for events, stage panels, classroom lectures, and community PA systems without requiring any expensive cloud subscriptions or paid hardware transmitters.
 
 ### Architecture Highlights:
 - **Signaling Server:** Node.js + Express + Socket.IO (Port `3001`).

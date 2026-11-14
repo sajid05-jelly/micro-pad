@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { HomeDashboard } from './components/HomeDashboard.js';
 import { AdminControlRoom } from './components/AdminControlRoom.js';
 import { ParticipantMobile } from './components/ParticipantMobile.js';
 import { JoinPage } from './components/JoinPage.js';
@@ -20,7 +21,7 @@ const isMobileDevice = (): boolean => {
 const getInitialState = () => {
   if (typeof window === 'undefined') {
     return {
-      role: 'admin' as const,
+      role: 'home' as const,
       sessionId: 'MICRO-01',
       participantName: '',
       assignedChannel: undefined as number | undefined,
@@ -40,17 +41,15 @@ const getInitialState = () => {
   const assignedChannel = paramChannel ? parseInt(paramChannel, 10) : undefined;
   const assignedMicLabel = paramMic || (assignedChannel ? `MIC 0${assignedChannel}` : undefined);
 
-  let role: 'admin' | 'mic' | 'join';
+  let role: 'home' | 'admin' | 'mic' | 'join';
   if (window.location.pathname.startsWith('/join') || paramRole === 'join' || paramChannel !== null || paramMic !== null) {
     role = 'join';
   } else if (paramRole === 'mic') {
     role = paramName ? 'mic' : 'join';
   } else if (paramRole === 'admin') {
     role = 'admin';
-  } else if (isMobileDevice()) {
-    role = 'join';
   } else {
-    role = 'admin';
+    role = 'home';
   }
 
   return { role, sessionId, participantName, assignedChannel, assignedMicLabel };
@@ -58,7 +57,7 @@ const getInitialState = () => {
 
 export default function App() {
   const [initial] = useState(getInitialState);
-  const [role, setRole] = useState<'admin' | 'mic' | 'join'>(initial.role);
+  const [role, setRole] = useState<'home' | 'admin' | 'mic' | 'join'>(initial.role);
   const [sessionId, setSessionId] = useState<string>(initial.sessionId);
   const [participantName, setParticipantName] = useState<string>(initial.participantName);
   const [assignedChannel, setAssignedChannel] = useState<number | undefined>(initial.assignedChannel);
@@ -238,20 +237,31 @@ export default function App() {
       participantStream.getTracks().forEach(t => t.stop());
       setParticipantStream(null);
     }
-    setRole('join');
+    setRole('home');
     // Clear URL parameters
     window.history.replaceState({}, '', window.location.pathname);
   };
 
   return (
     <div className="w-full min-h-screen bg-bg-main text-text-primary">
-      {role === 'admin' ? (
+      {role === 'home' ? (
+        <HomeDashboard
+          sessionId={sessionId}
+          connectionStatus={connectionStatus}
+          connectionError={connectionError}
+          onRetryConnection={handleRetryConnection}
+          onStartSession={() => setRole('admin')}
+          onJoinSession={() => setRole('join')}
+          onOpenControlRoom={() => setRole('admin')}
+        />
+      ) : role === 'admin' ? (
         <AdminControlRoom
           socket={socket}
           sessionId={sessionId}
           localIp={localIp}
           tunnelUrl={tunnelUrl}
           hostAudio={hostAudioRef.current}
+          onGoHome={() => setRole('home')}
         />
       ) : role === 'mic' ? (
         <ParticipantMobile
@@ -274,6 +284,7 @@ export default function App() {
           onRetryConnection={handleRetryConnection}
           onJoin={handleJoinFromPage}
           onOpenAdmin={() => setRole('admin')}
+          onGoHome={() => setRole('home')}
         />
       )}
     </div>

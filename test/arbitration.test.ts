@@ -1,4 +1,4 @@
-// Unit tests for Micro Pad Audio Arbitration & Exclusive Routing Engine
+// Unit tests for Micro Max Audio Arbitration & Exclusive Routing Engine
 import { 
   SessionState, 
   Participant, 
@@ -117,7 +117,7 @@ export function evaluateAutoArbitration(
 }
 
 function runTests() {
-  console.log('=== [MICRO PAD] STARTING ARBITRATION TEST SUITE ===');
+  console.log('=== [MICRO MAX] STARTING ARBITRATION TEST SUITE ===');
   let passed = 0;
   let total = 0;
 

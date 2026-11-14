@@ -1,4 +1,4 @@
-# Netlify Configuration for MICRO PAD Frontend
+# Netlify Configuration for MICRO MAX Frontend
 
 [build]
   command = "npm run build"

@@ -1,7 +1,7 @@
 import { io } from 'socket.io-client';
 
 async function runMuteUnmuteTest() {
-  console.log('=== [MICRO PAD] MUTE / UNMUTE AUDIO ROUTING TEST ===\n');
+  console.log('=== [MICRO MAX] MUTE / UNMUTE AUDIO ROUTING TEST ===\n');
 
   // 1. Connect Admin
   console.log('1. Connecting Host Control Room...');

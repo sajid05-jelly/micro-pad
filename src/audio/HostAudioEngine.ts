@@ -36,6 +36,7 @@ export class HostAudioEngine {
   }> = new Map();
 
   private channelTrim: Map<string, number> = new Map();
+  private masterVolume: number = 1.0;
   private selectedSinkId = 'default';
   private isEmergencyStopped = false;
   private isMuteAll = false;
@@ -280,6 +281,19 @@ export class HostAudioEngine {
     return this.channelTrim.get(participantId) || 1.0;
   }
 
+  // Master volume control (0.0 to 1.0)
+  public setMasterVolume(vol: number) {
+    this.masterVolume = Math.max(0, Math.min(1.0, vol));
+    if (this.masterGain && this.audioContext) {
+      this.masterGain.gain.setValueAtTime(this.masterVolume, this.audioContext.currentTime);
+    }
+    this.updateRouting();
+  }
+
+  public getMasterVolume(): number {
+    return this.masterVolume;
+  }
+
   // Set audio routing: only active speaker gets gain; all others clamped to 0.0
   public setRouting(
     activeSpeakerId: string | null, 
@@ -309,7 +323,7 @@ export class HostAudioEngine {
                         (this.activeSpeakerId === id);
 
       const trim = this.channelTrim.get(id) || 1.0;
-      const targetGain = isAudible ? Math.min(1.0, 1.0 * trim) : 0.0;
+      const targetGain = isAudible ? Math.min(1.0, 1.0 * trim * this.masterVolume) : 0.0;
 
       // Clickless smooth 20ms ramp to target gain on Web Audio node
       if (nodes.gain && this.audioContext) {

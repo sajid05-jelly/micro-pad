@@ -319,7 +319,7 @@ let activeTunnel: TunnelState | null = (process.env.TUNNEL_URL || process.env.PU
 // Tunnel health watchdog: auto-decommission stale tunnels if no heartbeat for 25s
 setInterval(() => {
   if (activeTunnel && (Date.now() - activeTunnel.lastHeartbeat > 25000)) {
-    console.log(`[MICRO PAD] Tunnel auto-expired (no heartbeat in 25s): ${activeTunnel.url}`);
+    console.log(`[MICRO MAX] Tunnel auto-expired (no heartbeat in 25s): ${activeTunnel.url}`);
     activeTunnel = null;
     io.emit('system:ip_info', {
       localIp: getLocalIp(),
@@ -337,7 +337,7 @@ app.get('/', (_req, res) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MICRO PAD // Broadcast Console</title>
+  <title>MICRO MAX // Broadcast Console</title>
   <meta http-equiv="refresh" content="2;url=http://${currentIp}:5173/">
   <style>
     body { background: #0c0d0e; color: #f2f5f8; font-family: 'IBM Plex Mono', monospace, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 20px; text-align: center; }
@@ -350,7 +350,7 @@ app.get('/', (_req, res) => {
 </head>
 <body>
   <div class="card">
-    <h1>MICRO PAD // BROADCAST GATEWAY</h1>
+    <h1>MICRO MAX // BROADCAST GATEWAY</h1>
     <p>Redirecting to Control Room console...</p>
     <a class="btn" href="http://${currentIp}:5173/">OPEN CONSOLE (PORT 5173) &rarr;</a>
   </div>
@@ -378,7 +378,7 @@ app.post('/api/tunnel', (req, res) => {
       clientPort: 5173,
       tunnelUrl: activeTunnel.url
     });
-    console.log(`[MICRO PAD] Registered Secure Public Tunnel: ${activeTunnel.url}`);
+    console.log(`[MICRO MAX] Registered Secure Public Tunnel: ${activeTunnel.url}`);
   }
   res.json({ status: 'OK', tunnelUrl: activeTunnel ? activeTunnel.url : null });
 });
@@ -406,7 +406,7 @@ app.post('/api/tunnel/heartbeat', (req, res) => {
 // Decommission active tunnel immediately on process shutdown
 app.delete('/api/tunnel', (_req, res) => {
   if (activeTunnel) {
-    console.log(`[MICRO PAD] Tunnel decommissioned: ${activeTunnel.url}`);
+    console.log(`[MICRO MAX] Tunnel decommissioned: ${activeTunnel.url}`);
     activeTunnel = null;
     io.emit('system:ip_info', {
       localIp: getLocalIp(),
@@ -454,7 +454,7 @@ app.get('/api/info', (_req, res) => {
   const currentIp = getLocalIp();
   res.json({
     status: 'ONLINE',
-    system: 'MICRO PAD BROADCAST ENGINE',
+    system: 'MICRO MAX BROADCAST ENGINE',
     localIp: currentIp,
     port: PORT,
     clientPort: 5173,
@@ -817,7 +817,7 @@ io.on('connection', (socket: Socket) => {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n======================================================================`);
-  console.log(`[MICRO PAD] BROADCAST SYSTEM READY // RETRO HARDWARE CONSOLE`);
+  console.log(`[MICRO MAX] BROADCAST SYSTEM READY // RETRO HARDWARE CONSOLE`);
   console.log(`======================================================================`);
   console.log(`1. HOST CONTROL ROOM (Laptop):`);
   console.log(`   ➜ http://localhost:5173/`);

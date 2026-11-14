@@ -2,7 +2,7 @@ import { spawn } from 'child_process';
 import http from 'http';
 
 console.log('====================================================');
-console.log('[MICRO PAD] LAUNCHING SECURE ZERO-WARNING HTTPS TUNNEL');
+console.log('[MICRO MAX] LAUNCHING SECURE ZERO-WARNING HTTPS TUNNEL');
 console.log('Target: Local Vite dev server on port 5173');
 console.log('====================================================\n');
 
@@ -123,7 +123,7 @@ tunnelProcess.stdout.on('data', handleOutput);
 tunnelProcess.stderr.on('data', handleOutput);
 
 tunnelProcess.on('exit', (code) => {
-  console.log(`[MICRO PAD] Tunnel process exited with code ${code}`);
+  console.log(`[MICRO MAX] Tunnel process exited with code ${code}`);
   decommissionTunnel();
 });
 

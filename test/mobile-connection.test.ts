@@ -1,7 +1,7 @@
 import { io } from 'socket.io-client';
 
 async function runMobileConnectionTest() {
-  console.log('=== [MICRO PAD] MOBILE CONNECTION & QR JOINING TEST ===\n');
+  console.log('=== [MICRO MAX] MOBILE CONNECTION & QR JOINING TEST ===\n');
 
   // 1. Verify API info returns valid reachable LAN IP
   console.log('1. Checking /api/info for reachable LAN IP...');
