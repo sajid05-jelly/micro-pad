@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
-import { Participant, SessionState } from '../types.js';
+import { Participant, SessionState, AudioCaptureSettings } from '../types.js';
 import { 
   ParticipantAudioEngine, 
   AudioLevelData, 
@@ -61,6 +61,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
   const [rawRms, setRawRms] = useState<number>(0);
   const [peakLevel, setPeakLevel] = useState<number>(0);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
+  const [isClipping, setIsClipping] = useState<boolean>(false);
 
   // Microphone and Hardware state
   const [micPermissionGranted, setMicPermissionGranted] = useState<boolean>(false);
@@ -72,6 +73,13 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
   const [vocalProfile, setVocalProfile] = useState<'stage' | 'conference'>('stage');
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [showDiagnostics, setShowDiagnostics] = useState<boolean>(false);
+  const [audioSettings, setAudioSettings] = useState<AudioCaptureSettings>({
+    echoCancellation: false,
+    noiseSuppression: false,
+    autoGainControl: true,
+    highpassFilter: true,
+    sensitivity: 1.0
+  });
 
   // Isolated Local Hardware Mic Test state (Section B)
   const [isLocalTestRunning, setIsLocalTestRunning] = useState<boolean>(false);
@@ -224,6 +232,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
         setRawRms(data.rawRms);
         setPeakLevel(data.peak);
         setIsSpeaking(data.isSpeaking);
+        setIsClipping(data.isClipping);
 
         // Throttle telemetry sent to host console (~15 updates/sec)
         const now = Date.now();
@@ -440,6 +449,64 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
           >
             RESUME MIC
           </button>
+        </div>
+      )}
+
+      {/* Network Health & Distance Warning Pill */}
+      {netStats && (
+        <div className={`mb-3 px-3 py-2 rounded-lg border flex items-center justify-between text-xs font-mono ${
+          netStats.isDistanceWarning
+            ? 'bg-amber-950/30 border-yellow-500 text-yellow-200'
+            : 'bg-bg-elevated border-border text-text-secondary'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Wifi size={14} className={
+              netStats.quality === 'POOR' ? 'text-red-400 animate-pulse' :
+              netStats.quality === 'FAIR' ? 'text-yellow-400' : 'text-green-400'
+            } />
+            <span className="font-bold text-[11px]">
+              {netStats.quality === 'POOR' ? 'WEAK WI-FI' :
+               netStats.quality === 'FAIR' ? 'MODERATE WI-FI' : 'STRONG WI-FI'}
+            </span>
+            <span className="text-[10px] text-text-muted">
+              ({netStats.rttMs}ms RTT • {netStats.jitterMs}ms Jitter{netStats.packetLossPct > 0 ? ` • ${netStats.packetLossPct}% loss` : ''})
+            </span>
+          </div>
+          {netStats.wifiSignalHint && (
+            <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-bg-main border border-border/50 text-text-muted">
+              {netStats.wifiSignalHint}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Distance Dropout Warning Alert */}
+      {netStats?.isDistanceWarning && (
+        <div className="mb-3 p-3 bg-amber-950/50 border-2 border-yellow-500 rounded-xl flex items-start gap-2.5 text-xs text-yellow-200 font-mono animate-pulse shadow-lg">
+          <AlertCircle size={16} className="text-yellow-400 shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <div className="font-bold text-[11px] uppercase tracking-wide text-yellow-300">
+              DISTANCE ADVISORY: MOVE CLOSER TO HOST ROUTER
+            </div>
+            <div className="text-[11px] font-body text-yellow-100/90 leading-tight">
+              Wi-Fi latency is {netStats.rttMs}ms ({netStats.packetLossPct}% packet loss). Moving closer ensures smooth, uninterrupted sound on PA speakers.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Digital Clipping & Distortion Alert */}
+      {isAudioLive && isClipping && (
+        <div className="mb-3 p-3 bg-red-950/50 border-2 border-red-500 rounded-xl flex items-start gap-2.5 text-xs text-red-200 font-mono animate-bounce shadow-lg">
+          <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <div className="font-bold text-[11px] uppercase tracking-wide text-red-300">
+              MICROPHONE CLIPPING DETECTED
+            </div>
+            <div className="text-[11px] font-body text-red-100/90 leading-tight">
+              Voice volume is too loud for the phone's microphone. Hold phone 3-4 inches away or speak softer to prevent audio distortion.
+            </div>
+          </div>
         </div>
       )}
 
@@ -715,6 +782,73 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
                 >
                   SWITCH
                 </button>
+              </div>
+            )}
+
+            {/* Professional Audio DSP Toggles */}
+            {isAudioLive && (
+              <div className="p-3 bg-bg-main border border-border rounded-lg space-y-2.5">
+                <div className="text-[11px] font-bold text-text-primary uppercase flex items-center justify-between">
+                  <span>AUDIO DSP FILTERS</span>
+                  <span className="text-[9px] text-text-muted">LIVE TUNING</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                  <button
+                    onClick={async () => {
+                      const next = !audioSettings.highpassFilter;
+                      setAudioSettings(s => ({ ...s, highpassFilter: next }));
+                      if (audioEngineRef.current) await audioEngineRef.current.updateAudioSettings({ highpassFilter: next });
+                    }}
+                    className={`p-2 rounded border text-left transition-all ${
+                      audioSettings.highpassFilter ? 'bg-white text-black border-white font-bold' : 'bg-bg-elevated border-border text-text-secondary'
+                    }`}
+                  >
+                    <div>80Hz RUMBLE CUT</div>
+                    <div className="text-[9px] opacity-75">{audioSettings.highpassFilter ? 'Active (Cuts wind)' : 'Off (Full bass)'}</div>
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      const next = !audioSettings.autoGainControl;
+                      setAudioSettings(s => ({ ...s, autoGainControl: next }));
+                      if (audioEngineRef.current) await audioEngineRef.current.updateAudioSettings({ autoGainControl: next });
+                    }}
+                    className={`p-2 rounded border text-left transition-all ${
+                      audioSettings.autoGainControl ? 'bg-white text-black border-white font-bold' : 'bg-bg-elevated border-border text-text-secondary'
+                    }`}
+                  >
+                    <div>AUTO GAIN (AGC)</div>
+                    <div className="text-[9px] opacity-75">{audioSettings.autoGainControl ? 'Active (Levels voice)' : 'Manual Gain'}</div>
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      const next = !audioSettings.noiseSuppression;
+                      setAudioSettings(s => ({ ...s, noiseSuppression: next }));
+                      if (audioEngineRef.current) await audioEngineRef.current.updateAudioSettings({ noiseSuppression: next });
+                    }}
+                    className={`p-2 rounded border text-left transition-all ${
+                      audioSettings.noiseSuppression ? 'bg-white text-black border-white font-bold' : 'bg-bg-elevated border-border text-text-secondary'
+                    }`}
+                  >
+                    <div>NOISE SUPPRESSION</div>
+                    <div className="text-[9px] opacity-75">{audioSettings.noiseSuppression ? 'Active (Filter noise)' : 'Off (Studio warm)'}</div>
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      const next = !audioSettings.echoCancellation;
+                      setAudioSettings(s => ({ ...s, echoCancellation: next }));
+                      if (audioEngineRef.current) await audioEngineRef.current.updateAudioSettings({ echoCancellation: next });
+                    }}
+                    className={`p-2 rounded border text-left transition-all ${
+                      audioSettings.echoCancellation ? 'bg-white text-black border-white font-bold' : 'bg-bg-elevated border-border text-text-secondary'
+                    }`}
+                  >
+                    <div>ECHO CANCEL (AEC)</div>
+                    <div className="text-[9px] opacity-75">{audioSettings.echoCancellation ? 'Active' : 'Off (Stage PA)'}</div>
+                  </button>
+                </div>
               </div>
             )}
 

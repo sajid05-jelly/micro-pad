@@ -1,12 +1,15 @@
+import { NetworkQualityLevel, SpeakerOutputConfig } from '../types.js';
+
 // Web Audio API Host Audio Engine
 // Professional broadcast pipeline: per-channel trim, peak limiting, clickless crossfade,
-// single-point playback (zero comb filtering), and live WebRTC network diagnostics.
+// adaptive jitter buffering, distance resilience, multi-speaker routing, and live WebRTC network diagnostics.
 
 export function optimizeOpusSDP(sdp: string): string {
-  // Enforce Opus 128kbps, in-band forward error correction, 10ms low latency packaging, constant bitrate (no DTX dropouts)
+  // Enforce Opus broadcast audio with distance-resilient 20ms frame packaging (halves Wi-Fi frame collisions vs 10ms),
+  // in-band forward error correction (FEC), proactive 15% packet loss protection, 128kbps ceiling, and anti-DTX stability.
   return sdp.replace(/a=fmtp:(\d+)(.*)/g, (match, pt) => {
     if (sdp.includes(`a=rtpmap:${pt} opus/48000`)) {
-      return `a=fmtp:${pt} minptime=10;useinbandfec=1;maxaveragebitrate=128000;stereo=0;sprop-stereo=0;cbr=1`;
+      return `a=fmtp:${pt} ptime=20;minptime=10;maxptime=40;useinbandfec=1;packetlossperc=15;maxaveragebitrate=128000;stereo=0;sprop-stereo=0;cbr=1`;
     }
     return match;
   });
@@ -20,6 +23,11 @@ export interface PeerNetworkStats {
   audioLevel: number;
   bitrateKbps: number;
   candidateType: string;
+  jitterBufferDelayMs?: number;
+  packetsDiscarded?: number;
+  fecPacketsReceived?: number;
+  isClipping?: boolean;
+  quality?: NetworkQualityLevel;
 }
 
 export class HostAudioEngine {
@@ -27,6 +35,8 @@ export class HostAudioEngine {
   private masterGain: GainNode | null = null;
   private compressor: DynamicsCompressorNode | null = null;
   private masterAnalyser: AnalyserNode | null = null;
+  private delayNode: DelayNode | null = null;
+  private speakerDelayMs: number = 0;
   private channelNodes: Map<string, {
     source: MediaStreamAudioSourceNode;
     gain: GainNode;
@@ -34,6 +44,27 @@ export class HostAudioEngine {
     audioElement?: HTMLAudioElement;
     stream: MediaStream;
   }> = new Map();
+
+  private speakerOutputs: SpeakerOutputConfig[] = [
+    {
+      id: 'primary',
+      name: 'Main PA Output (PA System)',
+      deviceId: 'default',
+      delayMs: 0,
+      volume: 1.0,
+      isMuted: false,
+      isBluetooth: false
+    },
+    {
+      id: 'monitor',
+      name: 'Stage Monitor / Delay Speaker',
+      deviceId: 'default',
+      delayMs: 0,
+      volume: 1.0,
+      isMuted: false,
+      isBluetooth: false
+    }
+  ];
 
   private channelTrim: Map<string, number> = new Map();
   private masterVolume: number = 1.0;
@@ -69,10 +100,15 @@ export class HostAudioEngine {
       this.masterAnalyser.fftSize = 64;
       this.masterAnalyser.smoothingTimeConstant = 0.4;
 
-      // Clean single-point audio routing: MasterGain -> Limiter -> Analyser -> Physical Output (Bluetooth/Wired)
+      // 4. Master Output Delay Alignment Node (Synchronizes Bluetooth latency with wired PA or satellite speakers)
+      this.delayNode = this.audioContext.createDelay(1.0);
+      this.delayNode.delayTime.setValueAtTime(this.speakerDelayMs / 1000, this.audioContext.currentTime);
+
+      // Clean single-point audio routing: MasterGain -> Limiter -> Analyser -> Delay -> Physical Output
       this.masterGain.connect(this.compressor);
       this.compressor.connect(this.masterAnalyser);
-      this.masterAnalyser.connect(this.audioContext.destination);
+      this.masterAnalyser.connect(this.delayNode);
+      this.delayNode.connect(this.audioContext.destination);
     }
 
     if (this.audioContext.state === 'suspended') {
@@ -94,6 +130,38 @@ export class HostAudioEngine {
     for (const nodes of this.channelNodes.values()) {
       if (nodes.audioElement && nodes.audioElement.paused) {
         nodes.audioElement.play().catch(() => {});
+      }
+    }
+  }
+
+  public setSpeakerDelay(delayMs: number) {
+    this.speakerDelayMs = Math.max(0, Math.min(500, delayMs));
+    if (this.delayNode && this.audioContext) {
+      this.delayNode.delayTime.setValueAtTime(this.speakerDelayMs / 1000, this.audioContext.currentTime);
+    }
+    const primary = this.speakerOutputs.find(o => o.id === 'primary');
+    if (primary) primary.delayMs = this.speakerDelayMs;
+  }
+
+  public getSpeakerDelay(): number {
+    return this.speakerDelayMs;
+  }
+
+  public getSpeakerOutputs(): SpeakerOutputConfig[] {
+    return [...this.speakerOutputs];
+  }
+
+  public updateSpeakerOutput(id: string, updates: Partial<SpeakerOutputConfig>) {
+    const output = this.speakerOutputs.find(o => o.id === id);
+    if (output) {
+      Object.assign(output, updates);
+      if (id === 'primary') {
+        if (updates.deviceId !== undefined) {
+          this.setOutputDevice(updates.deviceId);
+        }
+        if (updates.delayMs !== undefined) {
+          this.setSpeakerDelay(updates.delayMs);
+        }
       }
     }
   }
@@ -407,11 +475,26 @@ export class HostAudioEngine {
     return this.peerConnections.get(participantId);
   }
 
-  // Collect real-time WebRTC network statistics (RTT, Packet Loss, Jitter, Audio Level)
+  // Collect real-time WebRTC network statistics (RTT, Packet Loss, Jitter, Audio Level, Clipping, Adaptive Jitter Buffer)
   public async getPeerStats(participantId: string): Promise<PeerNetworkStats> {
+    const defaultStats: PeerNetworkStats = {
+      rttMs: 0,
+      packetsLost: 0,
+      packetLossPct: 0,
+      jitterMs: 0,
+      audioLevel: 0,
+      bitrateKbps: 0,
+      candidateType: 'none',
+      jitterBufferDelayMs: 0,
+      packetsDiscarded: 0,
+      fecPacketsReceived: 0,
+      isClipping: false,
+      quality: 'EXCELLENT'
+    };
+
     const pc = this.peerConnections.get(participantId);
     if (!pc) {
-      return { rttMs: 0, packetsLost: 0, packetLossPct: 0, jitterMs: 0, audioLevel: 0, bitrateKbps: 0, candidateType: 'none' };
+      return defaultStats;
     }
     try {
       const stats = await pc.getStats();
@@ -422,6 +505,9 @@ export class HostAudioEngine {
       let audioLevel = 0;
       let bitrate = 0;
       let candidateType = 'host';
+      let jitterBufferDelayMs = 0;
+      let packetsDiscarded = 0;
+      let fecPacketsReceived = 0;
 
       stats.forEach((report: any) => {
         if (report.type === 'candidate-pair' && (report.state === 'succeeded' || report.nominated)) {
@@ -431,10 +517,52 @@ export class HostAudioEngine {
           packetsLost = report.packetsLost || 0;
           jitter = Math.round((report.jitter || 0) * 1000);
           audioLevel = Math.round((report.audioLevel || 0) * 100);
+          packetsDiscarded = report.packetsDiscarded || 0;
+          fecPacketsReceived = report.fecPacketsReceived || 0;
+          if (report.jitterBufferDelay && report.jitterBufferEmittedCount) {
+            jitterBufferDelayMs = Math.round((report.jitterBufferDelay / report.jitterBufferEmittedCount) * 1000);
+          }
           const totalPackets = (report.packetsReceived || 0) + (report.packetsLost || 0);
           packetLossPct = totalPackets > 0 ? Math.round((report.packetsLost / totalPackets) * 100) : 0;
         }
       });
+
+      // Adaptive Playout Delay / Jitter Buffer Target:
+      // Base target: 25ms. When jitter/packet loss increases due to distance, scale up to 100-120ms smoothly.
+      const targetSec = Math.min(0.12, Math.max(0.025, (jitter / 1000) * 2.5 + (packetLossPct > 5 ? 0.03 : 0)));
+      const receiver = pc.getReceivers().find(r => r.track && r.track.kind === 'audio');
+      if (receiver) {
+        if ('jitterBufferTarget' in receiver) {
+          (receiver as any).jitterBufferTarget = targetSec * 1000;
+        }
+        if ('playoutDelayHint' in receiver) {
+          (receiver as any).playoutDelayHint = targetSec;
+        }
+      }
+
+      // Check real-time hardware sample clipping on host channel node
+      let isClipping = false;
+      const channelNode = this.channelNodes.get(participantId);
+      if (channelNode && channelNode.analyser) {
+        const byteData = new Uint8Array(channelNode.analyser.frequencyBinCount);
+        channelNode.analyser.getByteTimeDomainData(byteData);
+        for (let i = 0; i < byteData.length; i++) {
+          if (byteData[i] >= 253 || byteData[i] <= 2) {
+            isClipping = true;
+            break;
+          }
+        }
+      }
+
+      // Quality tier
+      let quality: NetworkQualityLevel = 'EXCELLENT';
+      if (packetLossPct > 8 || rtt > 140 || jitter > 60) {
+        quality = 'POOR';
+      } else if (packetLossPct > 3 || rtt > 70 || jitter > 35) {
+        quality = 'FAIR';
+      } else if (packetLossPct > 0 || rtt > 30 || jitter > 15) {
+        quality = 'GOOD';
+      }
 
       return {
         rttMs: rtt,
@@ -443,10 +571,15 @@ export class HostAudioEngine {
         jitterMs: jitter,
         audioLevel,
         bitrateKbps: bitrate,
-        candidateType
+        candidateType,
+        jitterBufferDelayMs,
+        packetsDiscarded,
+        fecPacketsReceived,
+        isClipping,
+        quality
       };
     } catch (e) {
-      return { rttMs: 0, packetsLost: 0, packetLossPct: 0, jitterMs: 0, audioLevel: 0, bitrateKbps: 0, candidateType: 'none' };
+      return defaultStats;
     }
   }
 

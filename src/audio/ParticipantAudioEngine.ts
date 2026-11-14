@@ -1,11 +1,14 @@
+import { NetworkQualityLevel, AudioCaptureSettings } from '../types.js';
+
 // Participant Audio Engine: Captures real phone microphone, analyzes local audio levels/VAD,
-// optimizes Opus codec for 128kbps broadcast audio, and streams audio to host console over WebRTC.
+// optimizes Opus codec for broadcast audio with distance resilience, and streams audio to host console over WebRTC.
 
 export function optimizeOpusSDP(sdp: string): string {
-  // Enforce Opus 128kbps, in-band forward error correction, 10ms low latency packaging, constant bitrate (no DTX dropouts)
+  // Enforce Opus broadcast audio with distance-resilient 20ms frame packaging (halves Wi-Fi frame collisions vs 10ms),
+  // in-band forward error correction (FEC), proactive 15% packet loss protection, 128kbps ceiling, and anti-DTX stability.
   return sdp.replace(/a=fmtp:(\d+)(.*)/g, (match, pt) => {
     if (sdp.includes(`a=rtpmap:${pt} opus/48000`)) {
-      return `a=fmtp:${pt} minptime=10;useinbandfec=1;maxaveragebitrate=128000;stereo=0;sprop-stereo=0;cbr=1`;
+      return `a=fmtp:${pt} ptime=20;minptime=10;maxptime=40;useinbandfec=1;packetlossperc=15;maxaveragebitrate=128000;stereo=0;sprop-stereo=0;cbr=1`;
     }
     return match;
   });
@@ -19,6 +22,9 @@ export interface ClientNetworkStats {
   candidateType: string;
   bytesSent: number;
   packetsSent: number;
+  quality: NetworkQualityLevel;
+  isDistanceWarning: boolean;
+  wifiSignalHint?: string;
 }
 
 export interface AudioLevelData {
@@ -28,6 +34,8 @@ export interface AudioLevelData {
   isSpeaking: boolean;  // Voice activity threshold
   peak: number;         // Peak amplitude: 0.0 to 1.0
   rawRms: number;       // Raw pre-sensitivity RMS
+  isClipping: boolean;  // Digital clipping / distortion detection (sample >= 0.985)
+  clipCount: number;    // Count of clipped samples in frame window
 }
 
 export interface MicrophoneDiagnostics {
@@ -57,6 +65,7 @@ export class ParticipantAudioEngine {
   private stream: MediaStream | null = null;
   private audioContext: AudioContext | null = null;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
+  private highpassFilterNode: BiquadFilterNode | null = null;
   private analyser: AnalyserNode | null = null;
   private muteSinkNode: GainNode | null = null;
   private timeDomainBuffer: Float32Array | null = null;
@@ -68,6 +77,17 @@ export class ParticipantAudioEngine {
   private lastStatsTimestamp: number = 0;
   private lastBytesSent: number = 0;
   private totalPacketsSent: number = 0;
+  private lastClipTimestamp: number = 0;
+  private totalClipEvents: number = 0;
+  private currentAppliedBitrate: number = 96000;
+
+  private audioSettings: AudioCaptureSettings = {
+    echoCancellation: false,
+    noiseSuppression: false,
+    autoGainControl: true,
+    highpassFilter: true,
+    sensitivity: 1.0
+  };
 
   constructor() {}
 
@@ -181,19 +201,27 @@ export class ParticipantAudioEngine {
       throw new Error("Failed to initialize Web Audio AudioContext.");
     }
 
-    // 6. Connect MediaStream to AnalyserNode
+    // 6. Connect MediaStream to Highpass Filter & AnalyserNode
     if (this.sourceNode) {
-      try {
-        this.sourceNode.disconnect();
-      } catch {}
+      try { this.sourceNode.disconnect(); } catch {}
+    }
+    if (this.highpassFilterNode) {
+      try { this.highpassFilterNode.disconnect(); } catch {}
     }
     if (this.muteSinkNode) {
-      try {
-        this.muteSinkNode.disconnect();
-      } catch {}
+      try { this.muteSinkNode.disconnect(); } catch {}
     }
 
     this.sourceNode = this.audioContext.createMediaStreamSource(stream);
+
+    // Studio 80Hz rumble cut filter: eliminates table vibration, wind, and handling noise
+    this.highpassFilterNode = this.audioContext.createBiquadFilter();
+    this.highpassFilterNode.type = 'highpass';
+    this.highpassFilterNode.frequency.setValueAtTime(
+      this.audioSettings.highpassFilter ? 80 : 10,
+      this.audioContext.currentTime
+    );
+
     this.analyser = this.audioContext.createAnalyser();
     this.analyser.fftSize = 512;
     this.analyser.smoothingTimeConstant = 0.2;
@@ -203,13 +231,14 @@ export class ParticipantAudioEngine {
     // Web Audio rendering is pull-driven by AudioContext.destination.
     // If a node graph has no path terminating at destination, mobile browsers suspend sample pulling
     // from the MediaStreamAudioSourceNode to conserve device battery.
-    // We connect: sourceNode -> analyser -> muteSinkNode (gain = 0.0) -> destination.
+    // We connect: sourceNode -> highpassFilterNode -> analyser -> muteSinkNode (gain = 0.0) -> destination.
     // This forces the audio engine to pull live microphone samples continuously into the AnalyserNode,
     // while keeping phone speaker output 100% silent (ZERO feedback)!
     this.muteSinkNode = this.audioContext.createGain();
     this.muteSinkNode.gain.setValueAtTime(0.0, this.audioContext.currentTime);
 
-    this.sourceNode.connect(this.analyser);
+    this.sourceNode.connect(this.highpassFilterNode);
+    this.highpassFilterNode.connect(this.analyser);
     this.analyser.connect(this.muteSinkNode);
     this.muteSinkNode.connect(this.audioContext.destination);
 
@@ -291,7 +320,9 @@ export class ParticipantAudioEngine {
           levelPct: 0,
           isSpeaking: false,
           peak: 0,
-          rawRms: 0
+          rawRms: 0,
+          isClipping: false,
+          clipCount: 0
         });
         this.animationFrameId = requestAnimationFrame(check);
         return;
@@ -305,7 +336,9 @@ export class ParticipantAudioEngine {
           levelPct: 0,
           isSpeaking: false,
           peak: 0,
-          rawRms: 0
+          rawRms: 0,
+          isClipping: false,
+          clipCount: 0
         });
         this.animationFrameId = requestAnimationFrame(check);
         return;
@@ -325,14 +358,22 @@ export class ParticipantAudioEngine {
 
       let sumSquares = 0;
       let peak = 0;
+      let clippedSamples = 0;
       const len = buffer.length;
 
       for (let i = 0; i < len; i++) {
         const sample = buffer[i];
         const abs = Math.abs(sample);
+        if (abs >= 0.985) clippedSamples++;
         if (abs > peak) peak = abs;
         sumSquares += sample * sample;
       }
+
+      if (clippedSamples > 0 || peak >= 0.985) {
+        this.lastClipTimestamp = Date.now();
+        this.totalClipEvents++;
+      }
+      const isClipping = (Date.now() - this.lastClipTimestamp) < 800;
 
       const rawRms = Math.sqrt(sumSquares / len);
       const scaledRms = rawRms * this.sensitivity;
@@ -356,7 +397,9 @@ export class ParticipantAudioEngine {
         levelPct,
         isSpeaking,
         peak: Math.round(peak * 100) / 100,
-        rawRms: Math.round(rawRms * 1000) / 1000
+        rawRms: Math.round(rawRms * 1000) / 1000,
+        isClipping,
+        clipCount: clippedSamples
       });
 
       this.animationFrameId = requestAnimationFrame(check);
@@ -632,18 +675,22 @@ export class ParticipantAudioEngine {
     }
   }
 
-  // Collect real-time WebRTC network statistics (RTT, Packet Loss, Bitrate, Bytes Sent)
+  // Collect real-time WebRTC network statistics (RTT, Packet Loss, Bitrate, Bytes Sent, Quality Level)
   public async getStats(): Promise<ClientNetworkStats> {
+    const emptyStats: ClientNetworkStats = {
+      rttMs: 0,
+      packetLossPct: 0,
+      jitterMs: 0,
+      bitrateKbps: 0,
+      candidateType: 'none',
+      bytesSent: 0,
+      packetsSent: 0,
+      quality: 'EXCELLENT',
+      isDistanceWarning: false
+    };
+
     if (!this.peerConnection) {
-      return { 
-        rttMs: 0, 
-        packetLossPct: 0, 
-        jitterMs: 0, 
-        bitrateKbps: 0, 
-        candidateType: 'none',
-        bytesSent: 0,
-        packetsSent: 0
-      };
+      return emptyStats;
     }
     try {
       const stats = await this.peerConnection.getStats();
@@ -683,6 +730,53 @@ export class ParticipantAudioEngine {
         }
       });
 
+      // Calculate network quality tier
+      let quality: NetworkQualityLevel = 'EXCELLENT';
+      if (packetLoss > 8 || rtt > 140 || jitter > 60) {
+        quality = 'POOR';
+      } else if (packetLoss > 3 || rtt > 70 || jitter > 35) {
+        quality = 'FAIR';
+      } else if (packetLoss > 0 || rtt > 30 || jitter > 15) {
+        quality = 'GOOD';
+      }
+
+      // Distance warning: triggers when Wi-Fi signal deteriorates
+      const isDistanceWarning = quality === 'POOR' || packetLoss > 5 || rtt > 90 || jitter > 40;
+
+      // Wi-Fi signal hint via Network Information API
+      let wifiSignalHint: string | undefined = undefined;
+      if (typeof navigator !== 'undefined' && (navigator as any).connection) {
+        const conn = (navigator as any).connection;
+        if (conn.effectiveType) {
+          wifiSignalHint = `${conn.effectiveType.toUpperCase()} (${conn.downlink ? conn.downlink + ' Mbps' : 'Active'})`;
+        }
+      }
+
+      // Dynamic Bitrate Adaptation: gracefully throttle during distance packet loss bursts
+      if (this.peerConnection) {
+        const senders = this.peerConnection.getSenders();
+        const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+        if (audioSender && audioSender.getParameters && audioSender.setParameters) {
+          try {
+            const params = audioSender.getParameters();
+            if (params.encodings && params.encodings.length > 0) {
+              let targetBitrate = 96000;
+              if (packetLoss > 10 || rtt > 120) {
+                targetBitrate = 32000; // Emergency recovery bandwidth
+              } else if (packetLoss > 3 || rtt > 60 || jitter > 30) {
+                targetBitrate = 48000; // Resilient mobile bandwidth
+              }
+              if (this.currentAppliedBitrate !== targetBitrate) {
+                params.encodings[0].maxBitrate = targetBitrate;
+                audioSender.setParameters(params).then(() => {
+                  this.currentAppliedBitrate = targetBitrate;
+                }).catch(() => {});
+              }
+            }
+          } catch {}
+        }
+      }
+
       return {
         rttMs: rtt,
         packetLossPct: packetLoss,
@@ -690,19 +784,45 @@ export class ParticipantAudioEngine {
         bitrateKbps: Math.max(0, bitrate),
         candidateType: candType,
         bytesSent,
-        packetsSent
+        packetsSent,
+        quality,
+        isDistanceWarning,
+        wifiSignalHint
       };
     } catch (e) {
-      return { 
-        rttMs: 0, 
-        packetLossPct: 0, 
-        jitterMs: 0, 
-        bitrateKbps: 0, 
-        candidateType: 'none',
-        bytesSent: 0,
-        packetsSent: 0
-      };
+      return emptyStats;
     }
+  }
+
+  public async updateAudioSettings(newSettings: Partial<AudioCaptureSettings>) {
+    this.audioSettings = { ...this.audioSettings, ...newSettings };
+    if (newSettings.sensitivity !== undefined) {
+      this.setSensitivity(newSettings.sensitivity);
+    }
+    if (this.highpassFilterNode && this.audioContext) {
+      this.highpassFilterNode.frequency.setValueAtTime(
+        this.audioSettings.highpassFilter ? 80 : 10,
+        this.audioContext.currentTime
+      );
+    }
+    if (this.stream) {
+      const track = this.stream.getAudioTracks()[0];
+      if (track && typeof track.applyConstraints === 'function') {
+        try {
+          await track.applyConstraints({
+            echoCancellation: this.audioSettings.echoCancellation,
+            noiseSuppression: this.audioSettings.noiseSuppression,
+            autoGainControl: this.audioSettings.autoGainControl
+          });
+        } catch (e) {
+          console.warn('[ParticipantAudioEngine] applyConstraints failed:', e);
+        }
+      }
+    }
+  }
+
+  public getAudioSettings(): AudioCaptureSettings {
+    return { ...this.audioSettings };
   }
 
   public stop() {

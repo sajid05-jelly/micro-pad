@@ -142,6 +142,15 @@ const sessionArbitrationState: Record<string, ArbitrationState> = {
   }
 };
 
+// Reconnection Cache: restores channel number & priority when mobile reconnects after Wi-Fi blip
+interface CachedParticipantInfo {
+  name: string;
+  channelNumber: number;
+  priority: PriorityLevel;
+  lastSeen: number;
+}
+const participantReconnectCache: Record<string, Record<string, CachedParticipantInfo>> = {};
+
 /**
  * AUTO MODE ARBITRATION ENGINE
  * Runs periodically to evaluate audio activity, speaker locks, priority levels, and silence timeouts.
@@ -565,21 +574,34 @@ io.on('connection', (socket: Socket) => {
     }
 
     const session = sessions[userSessionId];
+    if (!participantReconnectCache[userSessionId]) {
+      participantReconnectCache[userSessionId] = {};
+    }
+
+    const trimmedName = name.trim();
+    const cached = trimmedName ? participantReconnectCache[userSessionId][trimmedName] : null;
+    const isRecentReconnect = cached && (Date.now() - cached.lastSeen < 60000);
+
     let channelNumber: number;
     const requestedChannel = reqChannel ? Number(reqChannel) : undefined;
     const usedChannels = new Set(Object.values(session.participants).map(p => p.channelNumber));
-    if (requestedChannel && !usedChannels.has(requestedChannel)) {
+
+    if (isRecentReconnect && !usedChannels.has(cached.channelNumber)) {
+      channelNumber = cached.channelNumber;
+    } else if (requestedChannel && !usedChannels.has(requestedChannel)) {
       channelNumber = requestedChannel;
     } else {
       channelNumber = getNextChannelNumber(session);
     }
 
+    const effectivePriority = (isRecentReconnect && !priority) ? cached.priority : (priority || 'Normal');
+
     const participant: Participant = {
       id: socket.id,
       channelNumber,
-      name: name.trim() || `MIC ${String(channelNumber).padStart(2, '0')}`,
+      name: trimmedName || `MIC ${String(channelNumber).padStart(2, '0')}`,
       state: 'CONNECTING',
-      priority: priority || 'Normal',
+      priority: effectivePriority,
       isMutedByAdmin: false,
       isMutedSelf: false,
       audioLevel: 0,
@@ -801,6 +823,19 @@ io.on('connection', (socket: Socket) => {
       } else if (participantId && session.participants[participantId]) {
         const p = session.participants[participantId];
         logEvent(session, 'WARN', `MIC OFFLINE -> CH-${String(p.channelNumber).padStart(2, '0')}`, `${p.name} disconnected`);
+
+        // Cache participant identity for seamless reconnection after Wi-Fi blips
+        if (p.name && !p.name.startsWith('MIC ')) {
+          if (!participantReconnectCache[userSessionId]) {
+            participantReconnectCache[userSessionId] = {};
+          }
+          participantReconnectCache[userSessionId][p.name] = {
+            name: p.name,
+            channelNumber: p.channelNumber,
+            priority: p.priority,
+            lastSeen: Date.now()
+          };
+        }
         
         if (session.activeSpeakerId === participantId) {
           session.activeSpeakerId = null;

@@ -20,12 +20,17 @@ export const AudioOutputPanel: React.FC<AudioOutputPanelProps> = ({
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('default');
   const [testTonePlayed, setTestTonePlayed] = useState<boolean>(false);
   const [supportsSinkId, setSupportsSinkId] = useState<boolean>(false);
+  const [speakerDelay, setSpeakerDelay] = useState<number>(hostAudio.getSpeakerDelay());
+  const [speakerOutputs, setSpeakerOutputs] = useState(hostAudio.getSpeakerOutputs());
 
   useEffect(() => {
     const ctx = hostAudio.getAudioContext();
     if (ctx) {
       setAudioState(ctx.state);
     }
+    setSpeakerDelay(hostAudio.getSpeakerDelay());
+    setSpeakerOutputs(hostAudio.getSpeakerOutputs());
+
     // Check setSinkId support in browser
     if (typeof (AudioContext.prototype as any).setSinkId === 'function' ||
         typeof (HTMLAudioElement.prototype as any).setSinkId === 'function') {
@@ -60,6 +65,12 @@ export const AudioOutputPanel: React.FC<AudioOutputPanelProps> = ({
     hostAudio.playTestChime();
     setTestTonePlayed(true);
     setTimeout(() => setTestTonePlayed(false), 800);
+  };
+
+  const handleDelayChange = (delayMs: number) => {
+    setSpeakerDelay(delayMs);
+    hostAudio.setSpeakerDelay(delayMs);
+    setSpeakerOutputs(hostAudio.getSpeakerOutputs());
   };
 
   return (
@@ -169,6 +180,57 @@ export const AudioOutputPanel: React.FC<AudioOutputPanelProps> = ({
               ? '✓ Direct hardware sink routing enabled.' 
               : 'ℹ Standard system audio driver routing.'}
           </div>
+        </div>
+      </div>
+
+      {/* Multi-Speaker Synchronization & Delay Alignment Panel */}
+      <div className="p-3 bg-bg-main border border-border space-y-3 font-mono text-xs">
+        <div className="flex items-center justify-between pb-1.5 border-b border-border">
+          <span className="font-bold uppercase text-[11px] tracking-wider text-text-primary">
+            SPEAKER LATENCY SYNCHRONIZATION // DELAY ALIGNMENT
+          </span>
+          <span className="text-[10px] text-text-muted">
+            DELAY: <strong className="text-text-primary">{speakerDelay} ms</strong>
+          </span>
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-text-secondary text-[11px]">
+            <span>PA Alignment Delay (compensates Bluetooth &amp; satellite speaker distance):</span>
+            <span className="text-text-primary font-bold">{speakerDelay} ms</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={250}
+            step={5}
+            value={speakerDelay}
+            onChange={(e) => handleDelayChange(Number(e.target.value))}
+            className="w-full accent-white bg-bg-main cursor-pointer"
+          />
+          <div className="flex justify-between text-[9px] text-text-muted">
+            <span>0 ms (Direct Wired AUX)</span>
+            <span>75 ms (Delay Tower)</span>
+            <span>150 ms (Bluetooth Align)</span>
+            <span>250 ms (Max PA Buffer)</span>
+          </div>
+        </div>
+
+        {/* Multi-Speaker Destinations Status */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
+          {speakerOutputs.map((out) => (
+            <div key={out.id} className="p-2.5 bg-bg-secondary border border-border rounded flex items-center justify-between">
+              <div>
+                <div className="font-bold text-text-primary">{out.name}</div>
+                <div className="text-[9px] text-text-muted mt-0.5">
+                  Device: {out.deviceId === 'default' ? 'System Default' : out.deviceId.substring(0, 8)} • Delay: {out.delayMs}ms
+                </div>
+              </div>
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-950/40 text-green-400 border border-green-500/30">
+                ACTIVE
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 

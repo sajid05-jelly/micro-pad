@@ -128,16 +128,26 @@ export const MicCard: React.FC<MicCardProps> = ({
         />
       </div>
 
-      {/* RF & Wi-Fi Link Quality */}
+      {/* RF & Wi-Fi Link Quality & Clipping Alert */}
       <div className={`flex items-center justify-between text-[10px] font-mono px-1.5 py-0.5 rounded border ${
-        isSelected ? 'border-black/30 bg-black/5 text-black' : 'border-border/60 bg-bg-main text-text-secondary'
+        stats?.isClipping
+          ? 'border-red-500 bg-red-950/40 text-red-300 font-bold animate-pulse'
+          : isSelected 
+          ? 'border-black/30 bg-black/5 text-black' 
+          : 'border-border/60 bg-bg-main text-text-secondary'
       }`}>
         <div className="flex items-center gap-1">
-          <Wifi size={10} className={stats && stats.packetLossPct > 10 ? 'animate-pulse text-red-500' : ''} />
-          <span>{stats && stats.rttMs > 0 ? `${stats.rttMs}ms` : 'LINK OK'}</span>
+          {stats?.isClipping ? (
+            <span className="text-red-400 font-bold">⚠️ CLIPPING</span>
+          ) : (
+            <>
+              <Wifi size={10} className={stats && stats.packetLossPct > 5 ? 'animate-pulse text-red-500' : ''} />
+              <span>{stats && stats.rttMs > 0 ? `${stats.rttMs}ms` : 'LINK OK'}</span>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-1.5">
-          <span className={stats && stats.packetLossPct > 5 ? 'font-bold underline' : ''}>
+          <span className={stats && stats.packetLossPct > 5 ? 'font-bold underline text-red-400' : ''}>
             LOSS: {stats ? `${stats.packetLossPct}%` : '0%'}
           </span>
           {stats && stats.jitterMs > 0 && (

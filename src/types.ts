@@ -61,3 +61,23 @@ export interface SessionState {
   participants: Record<string, Participant>;
   recentEvents: SystemEvent[];
 }
+
+export type NetworkQualityLevel = 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
+
+export interface AudioCaptureSettings {
+  echoCancellation: boolean;
+  noiseSuppression: boolean;
+  autoGainControl: boolean;
+  highpassFilter: boolean;
+  sensitivity: number;
+}
+
+export interface SpeakerOutputConfig {
+  id: string;
+  name: string;
+  deviceId: string;
+  delayMs: number;
+  volume: number;
+  isMuted: boolean;
+  isBluetooth: boolean;
+}
