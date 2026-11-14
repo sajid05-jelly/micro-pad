@@ -8,66 +8,62 @@
   }
 
   body {
-    background-color: #080808;
-    color: #F5F5F5;
+    background-color: #0C090B;
+    color: #F8F5F2;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
     background-image: 
-      radial-gradient(#202020 0.75px, transparent 0.75px),
-      linear-gradient(to right, #101010 1px, transparent 1px),
-      linear-gradient(to bottom, #101010 1px, transparent 1px);
-    background-size: 24px 24px, 48px 48px, 48px 48px;
-    background-position: 0 0, 0 0, 0 0;
+      radial-gradient(ellipse 80% 50% at 50% 100%, rgba(74, 20, 37, 0.45) 0%, rgba(43, 17, 28, 0.25) 45%, rgba(12, 9, 11, 0) 80%),
+      radial-gradient(rgba(214, 179, 106, 0.05) 1px, transparent 1px);
+    background-size: 100% 100%, 20px 20px;
+    background-position: 0 0, 0 0;
+    background-attachment: fixed;
   }
 
-  /* Custom monochrome scrollbars */
+  /* Custom Burgundy / Gold Scrollbars */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #080808;
-    border-left: 1px solid #202020;
+    background: #0C090B;
+    border-left: 1px solid #2B111C;
   }
   ::-webkit-scrollbar-thumb {
-    background: #303030;
-    border-radius: 0px;
+    background: #2B111C;
+    border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #505050;
+    background: #4A1425;
   }
 }
 
-/* Retro technical rackmount and panel utilities */
-.rack-screw {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #141414;
-  border: 1px solid #404040;
-  box-shadow: inset 0 1px 1px #000;
-  position: relative;
-}
-.rack-screw::after {
-  content: '';
-  position: absolute;
-  top: 3px;
-  left: 1px;
-  right: 1px;
-  height: 1px;
-  background: #606060;
-  transform: rotate(45deg);
+/* Cinematic Ambient Layers for Hero & Modals */
+.cinematic-glow {
+  pointer-events: none;
+  background: radial-gradient(ellipse 70% 50% at 50% 100%, rgba(74, 20, 37, 0.5) 0%, rgba(43, 17, 28, 0.25) 50%, transparent 80%);
 }
 
-/* Crisp button press effect */
+.cinematic-halftone {
+  pointer-events: none;
+  background-image: radial-gradient(rgba(214, 179, 106, 0.07) 1px, transparent 1px);
+  background-size: 16px 16px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 90%, black 20%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 90%, black 20%, transparent 80%);
+}
+
+/* Tactile button press effect */
 .btn-tactile {
-  transition: transform 0.05s ease, filter 0.05s ease;
+  transition: transform 0.08s ease, filter 0.08s ease, background-color 0.15s ease, border-color 0.15s ease;
 }
 .btn-tactile:active {
-  transform: translateY(1px);
+  transform: translateY(1px) scale(0.99);
 }
 
-/* Focus styles without blue/purple */
+/* Subtle gold focus ring */
 *:focus-visible {
-  outline: 1px solid #F5F5F5;
+  outline: 1px solid #D6B36A;
   outline-offset: 1px;
 }
 

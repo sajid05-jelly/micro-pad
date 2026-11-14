@@ -36,16 +36,16 @@ export const RetroVUMeter: React.FC<RetroVUMeterProps> = ({
   const peakSegmentIndex = Math.min(segments - 1, Math.floor((peakHold / 100) * segments));
 
   return (
-    <div className="w-full flex flex-col gap-1 font-mono select-none">
+    <div className="w-full flex flex-col gap-1.5 font-mono select-none">
       {label && (
         <div className="flex justify-between items-center text-[10px] text-text-secondary uppercase tracking-widest">
           <span>{label}</span>
-          <span className="font-bold">{numericValue ?? (level > 0 ? `-${Math.round((100 - level) * 0.4)} dB` : '-INF dB')}</span>
+          <span className="font-bold text-gold">{numericValue ?? (level > 0 ? `-${Math.round((100 - level) * 0.4)} dB` : '-INF dB')}</span>
         </div>
       )}
 
       {/* Meter Bar */}
-      <div className={`w-full ${height} bg-bg-main border border-border flex items-center p-0.5 gap-0.5 relative`}>
+      <div className={`w-full ${height} bg-bg-main border border-border/80 rounded-md flex items-center p-0.5 gap-0.5 relative shadow-inner`}>
         {Array.from({ length: segments }).map((_, i) => {
           const isActive = i < activeCount;
           const isPeakBar = i === peakSegmentIndex && peakHold > 5;
@@ -54,14 +54,14 @@ export const RetroVUMeter: React.FC<RetroVUMeterProps> = ({
           return (
             <div
               key={i}
-              className={`flex-1 h-full transition-all duration-75 ${
+              className={`flex-1 h-full rounded-xs transition-all duration-75 ${
                 isActive
                   ? isOverload
-                    ? 'bg-text-primary' // Monochrome overload indicator
-                    : 'bg-text-secondary'
+                    ? 'bg-gold-light shadow-[0_0_8px_rgba(232,201,141,0.5)]'
+                    : 'bg-gold shadow-[0_0_4px_rgba(214,179,106,0.3)]'
                   : isPeakBar
-                  ? 'bg-text-muted border-b border-text-primary'
-                  : 'bg-[#151515]'
+                  ? 'bg-gold/40 border-b border-gold-light'
+                  : 'bg-burgundy-subtle/80'
               }`}
             />
           );
@@ -76,7 +76,7 @@ export const RetroVUMeter: React.FC<RetroVUMeterProps> = ({
           <span>-6</span>
           <span>-3</span>
           <span>0</span>
-          <span className="text-text-primary font-bold">+3</span>
+          <span className="text-gold font-bold">+3</span>
         </div>
       )}
     </div>

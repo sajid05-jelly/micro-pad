@@ -12,7 +12,6 @@ import {
   ShieldCheck, 
   AlertTriangle,
   Lock,
-  Globe,
   Radio,
   RefreshCw
 } from 'lucide-react';
@@ -41,7 +40,7 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
   const [customTunnel, setCustomTunnel] = useState<string>('');
   const [isApplyingTunnel, setIsApplyingTunnel] = useState(false);
 
-  // Live probe state for Secure Tunnel mode (prevents displaying fake green ACTIVE or generating broken QR codes)
+  // Live probe state for Secure Tunnel mode
   const [probeStatus, setProbeStatus] = useState<'idle' | 'probing' | 'verified' | 'offline'>('idle');
   const [probeError, setProbeError] = useState<string | null>(null);
 
@@ -138,7 +137,6 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
     params.set('mic', `MIC ${String(channelNumber).padStart(2, '0')}`);
   }
 
-  // Check if Control Room is running on a public HTTPS domain (e.g. deployed on Netlify / Cloud)
   const isPublicHttpsHost = typeof window !== 'undefined' && 
     window.location.protocol === 'https:' && 
     !window.location.hostname.includes('localhost') && 
@@ -146,9 +144,6 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
     !window.location.hostname.startsWith('192.') && 
     !window.location.hostname.startsWith('10.');
 
-  // Determine effective base host
-  // In LAN mode, standard HTTP is used so mobile browsers connect without NET::ERR_CERT_AUTHORITY_INVALID
-  // On public HTTPS deployments (Netlify), origin is already secure and reachable globally
   let effectiveBaseHost = isPublicHttpsHost ? window.location.origin : `http://${effectiveIp}:5173`;
 
   if (connectionMode === 'tunnel' && activeTunnel) {
@@ -161,7 +156,6 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
 
   const joinUrl = `${effectiveBaseHost}/join?${params.toString()}`;
 
-  // Generate QR code only when URL is ready and verified (in tunnel mode, only if verified; or if public HTTPS host)
   const isQrReady = isPublicHttpsHost || connectionMode === 'lan' || (connectionMode === 'tunnel' && probeStatus === 'verified');
 
   useEffect(() => {
@@ -170,8 +164,8 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
         width: 320,
         margin: 2,
         color: {
-          dark: '#000000',
-          light: '#FFFFFF'
+          dark: '#0C090B',
+          light: '#F8F5F2'
         }
       })
         .then(url => setQrDataUrl(url))
@@ -214,39 +208,33 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="relative w-full max-w-lg bg-bg-elevated border-2 border-border text-text-primary p-6 rounded-sm shadow-2xl my-auto">
-        {/* Hardware rack screws */}
-        <div className="absolute top-2 left-2 rack-screw" />
-        <div className="absolute top-2 right-2 rack-screw" />
-        <div className="absolute bottom-2 left-2 rack-screw" />
-        <div className="absolute bottom-2 right-2 rack-screw" />
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto">
+      <div className="relative w-full max-w-lg bg-bg-card border border-border text-text-primary p-6 sm:p-7 rounded-2xl shadow-2xl shadow-black/80 my-auto">
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-border mb-3">
-          <div className="flex items-center gap-2">
-            <QrCode size={18} className="text-text-primary" />
-            <h3 className="font-heading font-black text-base tracking-wider uppercase">
+        <div className="flex items-center justify-between pb-3.5 border-b border-border mb-4">
+          <div className="flex items-center gap-2.5">
+            <QrCode size={18} className="text-gold" />
+            <h3 className="font-heading font-black text-base tracking-wider uppercase text-text-primary">
               {channelNumber ? `CONNECT PHONE // MIC ${String(channelNumber).padStart(2, '0')}` : 'SCAN TO CONNECT MICROPHONE'}
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-text-secondary hover:text-white border border-transparent hover:border-border rounded"
+            className="p-1.5 text-text-secondary hover:text-gold border border-transparent hover:border-border rounded-lg transition-colors"
           >
             <X size={16} />
           </button>
         </div>
 
-        {/* Mode Selector: Secure Tunnel (Zero Warning) vs Local LAN */}
-        <div className="grid grid-cols-2 gap-2 mb-3 font-mono text-xs">
+        {/* Mode Selector: Secure Tunnel vs Local LAN */}
+        <div className="grid grid-cols-2 gap-2 mb-3.5 font-mono text-xs">
           <button
             type="button"
             onClick={() => setConnectionMode('tunnel')}
-            className={`py-2 px-2 text-center border font-mono text-[11px] font-bold tracking-wider uppercase flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-2 text-center border font-mono text-[11px] font-bold tracking-wider uppercase rounded-lg flex items-center justify-center gap-1.5 transition-all ${
               connectionMode === 'tunnel'
-                ? 'bg-text-primary text-text-inverse border-white'
-                : 'bg-bg-main text-text-secondary border-border hover:border-text-primary'
+                ? 'bg-gold text-bg-main border-gold shadow-sm'
+                : 'bg-bg-main text-text-secondary border-border hover:border-gold/50'
             }`}
           >
             <Lock size={12} />
@@ -255,10 +243,10 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
           <button
             type="button"
             onClick={() => setConnectionMode('lan')}
-            className={`py-2 px-2 text-center border font-mono text-[11px] font-bold tracking-wider uppercase flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-2 text-center border font-mono text-[11px] font-bold tracking-wider uppercase rounded-lg flex items-center justify-center gap-1.5 transition-all ${
               connectionMode === 'lan'
-                ? 'bg-text-primary text-text-inverse border-white'
-                : 'bg-bg-main text-text-secondary border-border hover:border-text-primary'
+                ? 'bg-gold text-bg-main border-gold shadow-sm'
+                : 'bg-bg-main text-text-secondary border-border hover:border-gold/50'
             }`}
           >
             <Wifi size={12} />
@@ -267,46 +255,46 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
         </div>
 
         {/* QR Code Container / Status Screen */}
-        <div className="flex flex-col items-center justify-center p-3 bg-white rounded-sm my-2 min-h-[240px]">
+        <div className="flex flex-col items-center justify-center p-4 bg-[#F8F5F2] rounded-xl my-2 min-h-[240px] shadow-inner">
           {connectionMode === 'tunnel' && probeStatus === 'probing' ? (
-            <div className="w-52 h-52 flex flex-col items-center justify-center font-mono text-xs text-black space-y-2">
-              <RefreshCw size={24} className="animate-spin text-black" />
+            <div className="w-52 h-52 flex flex-col items-center justify-center font-mono text-xs text-[#0C090B] space-y-2">
+              <RefreshCw size={24} className="animate-spin text-[#0C090B]" />
               <span className="font-bold tracking-wider">VERIFYING TUNNEL REACHABILITY...</span>
             </div>
           ) : connectionMode === 'tunnel' && probeStatus === 'offline' ? (
-            <div className="w-full p-4 bg-bg-secondary border border-border rounded-sm text-center space-y-2">
+            <div className="w-full p-4 bg-bg-card border border-border rounded-xl text-center space-y-2 text-[#0C090B]">
               <div className="flex justify-center">
-                <AlertTriangle size={32} className="text-yellow-400" />
+                <AlertTriangle size={32} className="text-amber-500" />
               </div>
               <div className="font-heading font-bold text-xs uppercase text-text-primary tracking-wider">
                 TUNNEL OFFLINE // DNS UNRESOLVED
               </div>
               <p className="font-mono text-[11px] text-text-secondary leading-relaxed">
-                The tunnel endpoint <span className="text-text-primary underline font-bold">{activeTunnel}</span> could not be reached.
+                The tunnel endpoint <span className="text-gold underline font-bold">{activeTunnel}</span> could not be reached.
                 {probeError ? ` (${probeError})` : ''}
               </p>
               <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => verifyTunnel(activeTunnel)}
-                  className="px-3 py-1.5 bg-text-primary text-text-inverse font-mono font-bold text-xs uppercase btn-tactile hover:bg-white/90"
+                  className="px-3 py-1.5 bg-gold text-bg-main font-mono font-bold text-xs uppercase rounded-lg hover:bg-gold-light"
                 >
                   RE-CHECK REACHABILITY
                 </button>
                 <button
                   type="button"
                   onClick={() => setConnectionMode('lan')}
-                  className="px-3 py-1.5 bg-bg-main border border-border text-text-primary font-mono font-bold text-xs uppercase btn-tactile hover:border-text-primary"
+                  className="px-3 py-1.5 bg-bg-main border border-border text-text-primary font-mono font-bold text-xs uppercase rounded-lg hover:border-gold/50"
                 >
                   SWITCH TO LOCAL WI-FI
                 </button>
               </div>
               <div className="text-[10px] text-text-muted font-mono pt-2">
-                Run <code className="text-text-primary bg-bg-elevated px-1 py-0.5 border border-border">npm run tunnel</code> to provision a fresh public HTTPS URL.
+                Run <code className="text-gold bg-bg-elevated px-1 py-0.5 border border-border rounded">npm run tunnel</code> to provision a fresh public HTTPS URL.
               </div>
             </div>
           ) : connectionMode === 'tunnel' && (!activeTunnel || probeStatus === 'idle') ? (
-            <div className="w-full p-4 bg-bg-secondary border border-border rounded-sm text-center space-y-2">
+            <div className="w-full p-4 bg-bg-card border border-border rounded-xl text-center space-y-2">
               <div className="flex justify-center">
                 <Radio size={32} className="text-text-secondary" />
               </div>
@@ -314,12 +302,12 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
                 NO ACTIVE TUNNEL DETECTED
               </div>
               <p className="font-mono text-[11px] text-text-secondary leading-relaxed">
-                Run <code className="text-text-primary bg-bg-elevated px-1 py-0.5 border border-border">npm run tunnel</code> in terminal to create a free, trusted HTTPS link recognized by all phone cameras, or switch to Local Wi-Fi.
+                Run <code className="text-gold bg-bg-elevated px-1 py-0.5 border border-border rounded">npm run tunnel</code> in terminal to create a free, trusted HTTPS link recognized by all phone cameras, or switch to Local Wi-Fi.
               </p>
               <button
                 type="button"
                 onClick={() => setConnectionMode('lan')}
-                className="mt-2 px-3 py-1.5 bg-text-primary text-text-inverse font-mono font-bold text-xs uppercase btn-tactile hover:bg-white/90"
+                className="mt-2 px-3 py-1.5 bg-gold text-bg-main font-mono font-bold text-xs uppercase rounded-lg hover:bg-gold-light"
               >
                 USE LOCAL WI-FI (LAN IP)
               </button>
@@ -327,14 +315,14 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
           ) : qrDataUrl ? (
             <>
               <img src={qrDataUrl} alt="Session Join QR Code" className="w-52 h-52 object-contain" />
-              <span className="font-mono text-[10px] text-black tracking-widest mt-1 uppercase font-semibold text-center">
+              <span className="font-mono text-[10px] text-[#0C090B] tracking-widest mt-1.5 uppercase font-semibold text-center">
                 {channelNumber
                   ? `SCAN WITH PHONE CAMERA // SLOT: MIC ${String(channelNumber).padStart(2, '0')}`
                   : `SCAN WITH PHONE CAMERA // SESSION: ${sessionId}`}
               </span>
             </>
           ) : (
-            <div className="w-52 h-52 flex items-center justify-center font-mono text-xs text-black">
+            <div className="w-52 h-52 flex items-center justify-center font-mono text-xs text-[#0C090B]">
               GENERATING MATRIX...
             </div>
           )}
@@ -342,15 +330,15 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
 
         {/* Tunnel Configuration Input (When Tunnel mode is selected) */}
         {connectionMode === 'tunnel' && (
-          <div className="my-2 p-2.5 bg-bg-main border border-border rounded-sm space-y-2 text-xs font-mono">
+          <div className="my-2.5 p-3 bg-bg-main/80 border border-border rounded-xl space-y-2 text-xs font-mono">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-text-muted uppercase tracking-wider font-bold flex items-center gap-1">
-                <ShieldCheck size={12} className={probeStatus === 'verified' ? 'text-green-400' : 'text-text-muted'} />
+              <span className="text-[10px] text-text-muted uppercase tracking-wider font-bold flex items-center gap-1.5">
+                <ShieldCheck size={13} className={probeStatus === 'verified' ? 'text-gold' : 'text-text-muted'} />
                 <span>TRUSTED HTTPS TUNNEL (ZERO WARNINGS)</span>
               </span>
               {probeStatus === 'verified' ? (
-                <span className="text-[10px] text-green-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                <span className="text-[10px] text-gold font-bold uppercase tracking-wider flex items-center gap-1">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />
                   VERIFIED ONLINE
                 </span>
               ) : probeStatus === 'probing' ? (
@@ -374,30 +362,30 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
                 value={customTunnel}
                 onChange={(e) => setCustomTunnel(e.target.value)}
                 placeholder="E.G. https://xxxx.trycloudflare.com OR ngrok URL"
-                className="flex-1 bg-bg-secondary border border-border text-text-primary px-2.5 py-1 text-xs font-mono focus:border-text-primary"
+                className="flex-1 bg-bg-secondary border border-border text-text-primary px-3 py-1.5 text-xs font-mono rounded-lg focus:border-gold outline-none"
               />
               <button
                 type="submit"
                 disabled={isApplyingTunnel}
-                className="px-3 py-1 bg-text-primary text-text-inverse font-bold text-xs uppercase btn-tactile hover:bg-white/90 shrink-0"
+                className="px-3.5 py-1.5 bg-gold text-bg-main font-bold text-xs uppercase rounded-lg hover:bg-gold-light shrink-0 transition-colors"
               >
                 {isApplyingTunnel ? 'TESTING...' : 'APPLY & VERIFY'}
               </button>
             </form>
 
             <div className="text-[10px] text-text-secondary leading-relaxed">
-              Run <code className="text-text-primary bg-bg-secondary px-1 py-0.5 border border-border">npm run tunnel</code> in terminal, or paste your ngrok / Cloudflare tunnel URL above.
+              Run <code className="text-gold bg-bg-secondary px-1 py-0.5 border border-border rounded">npm run tunnel</code> in terminal, or paste your ngrok / Cloudflare tunnel URL above.
             </div>
           </div>
         )}
 
         {/* Network & Pairing URL Info */}
-        <div className="my-2 p-2.5 bg-bg-main border border-border rounded-sm space-y-2">
-          <div className="flex items-center justify-between text-xs font-mono bg-bg-secondary p-2 border border-border">
+        <div className="my-2.5 p-3 bg-bg-main/80 border border-border rounded-xl space-y-2">
+          <div className="flex items-center justify-between text-xs font-mono bg-bg-secondary p-2.5 border border-border rounded-lg">
             <span className="truncate max-w-[280px] text-text-primary font-mono text-[11px]">{joinUrl}</span>
             <button
               onClick={copyToClipboard}
-              className="flex items-center gap-1 px-2.5 py-1 bg-text-primary text-text-inverse font-bold rounded-sm text-[11px] btn-tactile hover:bg-white/90 shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1 bg-gold text-bg-main font-bold rounded-md text-[11px] hover:bg-gold-light shrink-0 transition-colors"
             >
               {copied ? <Check size={12} /> : <Copy size={12} />}
               {copied ? 'COPIED' : 'COPY'}
@@ -406,8 +394,8 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
 
           {connectionMode === 'lan' && (
             <div className="text-[10px] font-mono text-text-muted leading-relaxed">
-              <span className="text-text-primary font-bold">LOCAL WI-FI NOTICE: </span>
-              Phone and laptop must be connected to the same Wi-Fi or mobile hotspot. Served over standard HTTP on port 5173 to avoid browser certificate blocks. For zero warnings and mobile browser camera access from any network, use <button onClick={() => setConnectionMode('tunnel')} className="text-text-primary underline font-bold">Secure Tunnel mode</button>.
+              <span className="text-gold font-bold">LOCAL WI-FI NOTICE: </span>
+              Phone and laptop must be connected to the same Wi-Fi or mobile hotspot. Served over standard HTTP on port 5173 to avoid browser certificate blocks. For zero warnings and mobile browser camera access from any network, use <button onClick={() => setConnectionMode('tunnel')} className="text-gold underline font-bold">Secure Tunnel mode</button>.
             </div>
           )}
         </div>
@@ -422,7 +410,7 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
             href={joinUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 text-xs font-mono text-text-primary hover:underline"
+            className="flex items-center gap-1 text-xs font-mono text-gold hover:underline"
           >
             <span>Open in Tab</span>
             <ExternalLink size={12} />

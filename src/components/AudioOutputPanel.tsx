@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { HostAudioEngine } from '../audio/HostAudioEngine.js';
-import { Volume2, VolumeX, Radio, CheckCircle, AlertTriangle, Disc, RefreshCw } from 'lucide-react';
+import { Volume2, VolumeX, Radio, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface AudioOutputPanelProps {
   hostAudio: HostAudioEngine;
@@ -74,45 +74,45 @@ export const AudioOutputPanel: React.FC<AudioOutputPanelProps> = ({
   };
 
   return (
-    <div className="bg-bg-elevated border border-border p-4 rounded-sm flex flex-col gap-4 font-body">
-      <div className="flex items-center justify-between pb-2 border-b border-border">
-        <div className="flex items-center gap-2">
-          <Volume2 size={16} className="text-text-primary" />
-          <h3 className="font-heading font-semibold text-sm tracking-wider uppercase">
+    <div className="bg-bg-card border border-border p-5 rounded-2xl flex flex-col gap-4 font-body shadow-xl shadow-black/40">
+      <div className="flex items-center justify-between pb-3 border-b border-border">
+        <div className="flex items-center gap-2.5">
+          <Volume2 size={18} className="text-gold" />
+          <h3 className="font-heading font-semibold text-sm tracking-wider uppercase text-text-primary">
             AUDIO OUTPUT // BLUETOOTH PA SYSTEM
           </h3>
         </div>
-        <div className="flex items-center gap-1.5 font-mono text-xs">
-          <span className={`w-2 h-2 rounded-full ${audioState === 'running' ? 'bg-text-primary' : 'bg-text-muted border border-border'}`} />
-          <span className="uppercase">{audioState}</span>
+        <div className="flex items-center gap-2 font-mono text-xs">
+          <span className={`w-2 h-2 rounded-full ${audioState === 'running' ? 'bg-gold animate-pulse' : 'bg-text-muted border border-border'}`} />
+          <span className={`uppercase font-bold ${audioState === 'running' ? 'text-gold' : 'text-text-muted'}`}>{audioState}</span>
         </div>
       </div>
 
       {/* Host Audio Readiness Banner */}
       {audioState !== 'running' ? (
-        <div className="p-3 bg-bg-main border border-border flex items-center justify-between">
+        <div className="p-3.5 bg-burgundy-deep/80 border border-gold/40 rounded-xl flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-2 text-xs font-mono text-text-secondary">
-            <AlertTriangle size={14} className="text-text-primary" />
+            <AlertTriangle size={15} className="text-gold shrink-0" />
             <span>Host audio context suspended (browser autoplay policy)</span>
           </div>
           <button
             onClick={initializeHostAudio}
-            className="px-3 py-1 bg-text-primary text-text-inverse font-mono font-bold text-xs uppercase btn-tactile hover:bg-white/90"
+            className="px-3.5 py-1.5 bg-gold text-bg-main font-mono font-bold text-xs uppercase rounded-lg hover:bg-gold-light transition-all shadow-md active:scale-[0.99]"
           >
             ENGAGE HOST AUDIO
           </button>
         </div>
       ) : (
-        <div className="p-2.5 bg-bg-main border border-border flex items-center justify-between">
+        <div className="p-3 bg-burgundy-deep/50 border border-border rounded-xl flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-mono text-text-primary">
-            <CheckCircle size={14} />
+            <CheckCircle size={15} className="text-gold" />
             <span>Web Audio engine active (interactive latency, 48kHz stereo bus)</span>
           </div>
           <button
             onClick={handlePlayTestChime}
-            className="px-2.5 py-1 bg-bg-secondary border border-border text-xs font-mono hover:border-text-primary btn-tactile flex items-center gap-1"
+            className="px-3 py-1 bg-burgundy-deep border border-border text-xs font-mono text-text-primary hover:border-gold hover:text-gold rounded-lg btn-tactile flex items-center gap-1.5 transition-all"
           >
-            <Radio size={12} className={testTonePlayed ? 'animate-ping' : ''} />
+            <Radio size={12} className={testTonePlayed ? 'animate-ping text-gold' : 'text-gold'} />
             <span>TEST 440Hz CHIME</span>
           </button>
         </div>
@@ -121,11 +121,11 @@ export const AudioOutputPanel: React.FC<AudioOutputPanelProps> = ({
       {/* Routing status & Device selection */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
         {/* Current Physical Route */}
-        <div className="p-3 bg-bg-main border border-border space-y-2">
-          <div className="text-[10px] text-text-muted uppercase tracking-wider">ROUTING PIPELINE</div>
+        <div className="p-3.5 bg-bg-main/80 border border-border rounded-xl space-y-2">
+          <div className="text-[10px] text-text-muted uppercase tracking-wider font-semibold">ROUTING PIPELINE</div>
           <div className="flex items-center justify-between">
             <span className="text-text-secondary">Audible Stream:</span>
-            <span className="font-bold text-text-primary">
+            <span className="font-bold text-gold">
               {isEmergencyStop 
                 ? '[EMERGENCY STOP]' 
                 : isMuteAll 
@@ -144,10 +144,10 @@ export const AudioOutputPanel: React.FC<AudioOutputPanelProps> = ({
         </div>
 
         {/* Output Device Selection & Detection */}
-        <div className="p-3 bg-bg-main border border-border space-y-2">
+        <div className="p-3.5 bg-bg-main/80 border border-border rounded-xl space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] text-text-muted uppercase tracking-wider">HARDWARE DESTINATION</span>
-            <button onClick={refreshDevices} title="Refresh device list" className="text-text-secondary hover:text-white">
+            <span className="text-[10px] text-text-muted uppercase tracking-wider font-semibold">HARDWARE DESTINATION</span>
+            <button onClick={refreshDevices} title="Refresh device list" className="text-text-secondary hover:text-gold transition-colors">
               <RefreshCw size={11} />
             </button>
           </div>
@@ -160,7 +160,7 @@ export const AudioOutputPanel: React.FC<AudioOutputPanelProps> = ({
                 setSelectedDeviceId(devId);
                 await hostAudio.setOutputDevice(devId);
               }}
-              className="w-full bg-bg-secondary border border-border text-text-primary text-xs p-1.5 rounded-sm focus:border-text-primary"
+              className="w-full bg-bg-secondary border border-border text-text-primary text-xs p-2 rounded-lg focus:border-gold outline-none"
             >
               <option value="default">System Default (Default Speaker / Bluetooth)</option>
               {devices.map(d => (
@@ -170,8 +170,8 @@ export const AudioOutputPanel: React.FC<AudioOutputPanelProps> = ({
               ))}
             </select>
           ) : (
-            <div className="text-text-secondary text-[11px]">
-              Host OS audio mixer controls physical routing. Connect your Bluetooth speaker in Windows settings: <code className="text-text-primary">Settings &gt; Bluetooth &amp; devices</code>.
+            <div className="text-text-secondary text-[11px] leading-relaxed">
+              Host OS audio mixer controls physical routing. Connect your Bluetooth speaker in Windows settings: <code className="text-gold">Settings &gt; Bluetooth &amp; devices</code>.
             </div>
           )}
 
@@ -184,20 +184,20 @@ export const AudioOutputPanel: React.FC<AudioOutputPanelProps> = ({
       </div>
 
       {/* Multi-Speaker Synchronization & Delay Alignment Panel */}
-      <div className="p-3 bg-bg-main border border-border space-y-3 font-mono text-xs">
-        <div className="flex items-center justify-between pb-1.5 border-b border-border">
+      <div className="p-4 bg-bg-main/80 border border-border rounded-xl space-y-3 font-mono text-xs">
+        <div className="flex items-center justify-between pb-2 border-b border-border">
           <span className="font-bold uppercase text-[11px] tracking-wider text-text-primary">
             SPEAKER LATENCY SYNCHRONIZATION // DELAY ALIGNMENT
           </span>
           <span className="text-[10px] text-text-muted">
-            DELAY: <strong className="text-text-primary">{speakerDelay} ms</strong>
+            DELAY: <strong className="text-gold">{speakerDelay} ms</strong>
           </span>
         </div>
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-text-secondary text-[11px]">
             <span>PA Alignment Delay (compensates Bluetooth &amp; satellite speaker distance):</span>
-            <span className="text-text-primary font-bold">{speakerDelay} ms</span>
+            <span className="text-gold font-bold">{speakerDelay} ms</span>
           </div>
           <input
             type="range"
@@ -206,7 +206,7 @@ export const AudioOutputPanel: React.FC<AudioOutputPanelProps> = ({
             step={5}
             value={speakerDelay}
             onChange={(e) => handleDelayChange(Number(e.target.value))}
-            className="w-full accent-white bg-bg-main cursor-pointer"
+            className="w-full accent-[#D6B36A] bg-burgundy-deep h-1.5 rounded-lg cursor-pointer"
           />
           <div className="flex justify-between text-[9px] text-text-muted">
             <span>0 ms (Direct Wired AUX)</span>
@@ -217,16 +217,16 @@ export const AudioOutputPanel: React.FC<AudioOutputPanelProps> = ({
         </div>
 
         {/* Multi-Speaker Destinations Status */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-[11px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-[11px]">
           {speakerOutputs.map((out) => (
-            <div key={out.id} className="p-2.5 bg-bg-secondary border border-border rounded flex items-center justify-between">
+            <div key={out.id} className="p-3 bg-burgundy-deep/40 border border-border rounded-lg flex items-center justify-between">
               <div>
                 <div className="font-bold text-text-primary">{out.name}</div>
                 <div className="text-[9px] text-text-muted mt-0.5">
                   Device: {out.deviceId === 'default' ? 'System Default' : out.deviceId.substring(0, 8)} • Delay: {out.delayMs}ms
                 </div>
               </div>
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-green-950/40 text-green-400 border border-green-500/30">
+              <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-gold/15 text-gold border border-gold/30">
                 ACTIVE
               </span>
             </div>
@@ -236,11 +236,11 @@ export const AudioOutputPanel: React.FC<AudioOutputPanelProps> = ({
 
       {/* Studio Limiter & Stage Transmission Chain */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono">
-        <div className="p-3 bg-bg-main border border-border space-y-1.5">
+        <div className="p-3.5 bg-bg-main/80 border border-border rounded-xl space-y-1.5">
           <div className="text-[10px] text-text-muted uppercase tracking-wider font-bold">STUDIO MASTER LIMITER (ANTI-CLIPPING)</div>
           <div className="flex items-center justify-between">
             <span className="text-text-secondary">Limiter Ceiling:</span>
-            <span className="text-text-primary font-bold">-3.0 dBFS (True Peak Protected)</span>
+            <span className="text-gold font-bold">-3.0 dBFS (True Peak Protected)</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-text-secondary">Dynamics Compression:</span>
@@ -248,14 +248,14 @@ export const AudioOutputPanel: React.FC<AudioOutputPanelProps> = ({
           </div>
           <div className="flex items-center justify-between">
             <span className="text-text-secondary">Limiter Reduction:</span>
-            <span className="text-text-primary font-bold">{hostAudio.getCompressorReduction()} dB</span>
+            <span className="text-gold font-bold">{hostAudio.getCompressorReduction()} dB</span>
           </div>
-          <p className="text-[10px] text-text-muted mt-1">
+          <p className="text-[10px] text-text-muted mt-1 leading-relaxed">
             Safe pre-amp gain boost enabled. Even when phone distance varies or gain trim is raised, signals never digitally clip or distort through the PA speakers.
           </p>
         </div>
 
-        <div className="p-3 bg-bg-main border border-border space-y-1.5">
+        <div className="p-3.5 bg-bg-main/80 border border-border rounded-xl space-y-1.5">
           <div className="text-[10px] text-text-muted uppercase tracking-wider font-bold">END-TO-END LATENCY PROFILES</div>
           <div className="flex items-center justify-between">
             <span className="text-text-secondary">Wi-Fi LAN Transmission:</span>
@@ -263,21 +263,21 @@ export const AudioOutputPanel: React.FC<AudioOutputPanelProps> = ({
           </div>
           <div className="flex items-center justify-between">
             <span className="text-text-secondary">Wired 3.5mm AUX / USB Interface:</span>
-            <span className="text-text-primary font-bold text-green-400">~20 - 35 ms (Near Zero Latency)</span>
+            <span className="text-gold font-bold">~20 - 35 ms (Near Zero Latency)</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-text-secondary">Bluetooth Speaker (A2DP Codec):</span>
             <span className="text-text-primary font-bold">~120 - 180 ms (Hardware Buffer)</span>
           </div>
-          <p className="text-[10px] text-text-muted mt-1">
+          <p className="text-[10px] text-text-muted mt-1 leading-relaxed">
             For live musical performance or rapid call-and-response, plug laptop directly into venue amplifier via AUX cable.
           </p>
         </div>
       </div>
 
       {/* Bluetooth & Latency Engineering Notes */}
-      <div className="p-3 bg-bg-main border border-border text-xs space-y-1.5 text-text-secondary">
-        <div className="font-mono text-[10px] text-text-muted uppercase tracking-widest font-bold">
+      <div className="p-3.5 bg-burgundy-deep/30 border border-border rounded-xl text-xs space-y-1.5 text-text-secondary">
+        <div className="font-mono text-[10px] text-gold uppercase tracking-widest font-bold">
           LARGE-VENUE PRODUCTION ADVISORY
         </div>
         <p className="text-[11px] leading-relaxed">
