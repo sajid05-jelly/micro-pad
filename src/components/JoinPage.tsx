@@ -90,15 +90,15 @@ export const JoinPage: React.FC<JoinPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-bg-main text-text-primary flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Cinematic Ambient Glow & Halftone Overlay */}
-      <div className="absolute inset-0 cinematic-glow pointer-events-none" />
-      <div className="absolute inset-0 cinematic-halftone pointer-events-none" />
+    <div className="min-h-screen bg-bg-main text-text-primary flex items-center justify-center p-4 relative overflow-hidden font-body">
+      {/* Antigravity Ambient Glow & Dotted Halftone Texture */}
+      <div className="absolute inset-0 antigravity-glow pointer-events-none" />
+      <div className="absolute inset-0 antigravity-halftone pointer-events-none" />
 
-      <div className="relative z-10 w-full max-w-md bg-bg-card border border-border p-6 sm:p-8 rounded-2xl shadow-2xl shadow-black/60">
+      <div className="relative z-10 w-full max-w-md bg-bg-card border border-border p-6 sm:p-8 rounded-2xl shadow-card">
         {/* Brand Header */}
         <div className="text-center pb-4 border-b border-border/80 mb-5">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-burgundy-deep border border-gold/30 text-[10px] font-mono tracking-widest uppercase mb-3 text-gold rounded-full shadow-sm">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-bg-secondary border border-border text-[10px] font-mono tracking-widest uppercase mb-3 text-accent-blue rounded-full shadow-sm">
             <Radio size={12} />
             <span>JOIN AS MICROPHONE</span>
           </div>
@@ -112,12 +112,12 @@ export const JoinPage: React.FC<JoinPageProps> = ({
 
         {/* Server Connection Status Indicator */}
         {connectionStatus !== 'CONNECTED' && (
-          <div className="mb-4 p-3 bg-burgundy-deep/60 border border-border rounded-xl font-mono text-xs space-y-2">
+          <div className="mb-4 p-3 bg-bg-secondary border border-border rounded-xl font-mono text-xs space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {connectionStatus === 'CONNECTING' ? (
                   <>
-                    <Wifi size={13} className="text-gold animate-pulse" />
+                    <Wifi size={13} className="text-accent-blue animate-pulse" />
                     <span className="font-bold text-text-primary uppercase tracking-wider">CONNECTING TO CONSOLE...</span>
                   </>
                 ) : (
@@ -130,7 +130,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({
               <button
                 type="button"
                 onClick={onRetryConnection}
-                className="px-2.5 py-1 bg-gold text-bg-main font-bold text-[10px] uppercase rounded hover:bg-gold-light flex items-center gap-1 shrink-0 transition-colors"
+                className="px-2.5 py-1 bg-accent-blue text-white font-bold text-[10px] uppercase rounded hover:bg-accent-blue-hover flex items-center gap-1 shrink-0 transition-colors"
                 title="Retry connecting to console"
               >
                 <RefreshCw size={10} className={connectionStatus === 'CONNECTING' ? 'animate-spin' : ''} />
@@ -147,12 +147,12 @@ export const JoinPage: React.FC<JoinPageProps> = ({
 
         {/* Assigned Microphone Slot Badge (when joining via direct slot QR code) */}
         {assignedMicLabel && (
-          <div className="mb-4 p-3 bg-burgundy-deep/70 border border-gold/30 rounded-xl flex items-center justify-between font-mono text-xs shadow-sm">
+          <div className="mb-4 p-3 bg-bg-secondary border border-accent-blue/30 rounded-xl flex items-center justify-between font-mono text-xs shadow-sm">
             <div className="flex items-center gap-2">
-              <Radio size={14} className="text-gold animate-pulse" />
+              <Radio size={14} className="text-accent-blue animate-pulse" />
               <span className="text-text-secondary uppercase">ASSIGNED SLOT:</span>
             </div>
-            <div className="font-bold text-bg-main px-2.5 py-1 bg-gold rounded border border-gold">
+            <div className="font-bold text-white px-2.5 py-1 bg-accent-blue rounded border border-accent-blue shadow-sm">
               {assignedMicLabel}
             </div>
           </div>
@@ -160,7 +160,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({
 
         {/* Error Alert */}
         {error && (
-          <div className="mb-4 p-3 bg-burgundy-deep border border-red-500/50 text-xs font-mono text-text-primary flex items-start gap-2.5 rounded-xl">
+          <div className="mb-4 p-3 bg-red-950/40 border border-red-500/50 text-xs font-mono text-text-primary flex items-start gap-2.5 rounded-xl">
             <ShieldAlert size={16} className="mt-0.5 shrink-0 text-red-400" />
             <div className="space-y-1">
               <div className="font-bold uppercase tracking-wider text-red-300">AUDIO SETUP REQUIRED</div>
@@ -181,7 +181,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({
               onChange={(e) => setSessionId(e.target.value.toUpperCase())}
               placeholder="E.G. MICRO-01"
               required
-              className="w-full bg-bg-main border border-border text-text-primary p-3 rounded-xl font-mono text-sm tracking-widest uppercase focus:border-gold transition-colors outline-none"
+              className="w-full bg-bg-secondary border border-border text-text-primary p-3 rounded-xl font-mono text-sm tracking-widest uppercase focus:border-accent-blue transition-colors outline-none"
             />
           </div>
 
@@ -197,7 +197,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="E.G. ALEX / SPEAKER 1"
                 required
-                className="w-full bg-bg-main border border-border text-text-primary p-3 rounded-xl font-mono text-sm focus:border-gold transition-colors outline-none"
+                className="w-full bg-bg-secondary border border-border text-text-primary p-3 rounded-xl font-mono text-sm focus:border-accent-blue transition-colors outline-none"
               />
               <User size={15} className="absolute right-3.5 top-3.5 text-text-muted" />
             </div>
@@ -216,8 +216,8 @@ export const JoinPage: React.FC<JoinPageProps> = ({
                   onClick={() => setPriority(level)}
                   className={`py-2 px-1 text-center border font-mono text-xs uppercase rounded-lg transition-all ${
                     priority === level
-                      ? 'bg-gold text-bg-main border-gold font-bold shadow-sm'
-                      : 'bg-bg-main text-text-secondary border-border hover:border-gold/50'
+                      ? 'bg-accent-blue text-white border-accent-blue font-bold shadow-sm'
+                      : 'bg-bg-secondary text-text-secondary border-border hover:border-border-hover'
                   }`}
                 >
                   {level === 'VIP' ? 'VIP / LEAD' : level}
@@ -227,8 +227,8 @@ export const JoinPage: React.FC<JoinPageProps> = ({
           </div>
 
           {/* Guidelines */}
-          <div className="p-3 bg-burgundy-deep/40 border border-border rounded-xl text-[11px] font-body text-text-secondary space-y-1">
-            <div className="font-mono text-[9px] text-gold uppercase tracking-wider font-semibold">
+          <div className="p-3 bg-bg-secondary border border-border rounded-xl text-[11px] font-body text-text-secondary space-y-1">
+            <div className="font-mono text-[9px] text-accent-blue uppercase tracking-wider font-semibold">
               BEFORE YOU CONNECT
             </div>
             <p>&bull; Tap Connect Microphone and allow browser microphone permission when asked.</p>
@@ -239,7 +239,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({
           <button
             type="submit"
             disabled={isRequestingMic}
-            className="w-full py-3.5 bg-gold text-bg-main font-heading font-bold text-sm tracking-wider uppercase border border-gold rounded-xl hover:bg-gold-light flex items-center justify-center gap-2 shadow-lg shadow-black/40 disabled:opacity-50 transition-all active:scale-[0.99]"
+            className="w-full py-3.5 bg-accent-blue text-white font-heading font-semibold text-sm tracking-wider uppercase border border-accent-blue rounded-xl hover:bg-accent-blue-hover flex items-center justify-center gap-2 shadow-blue-glow disabled:opacity-50 transition-all active:scale-[0.99]"
           >
             <span>{isRequestingMic ? 'STARTING MIC...' : 'CONNECT MICROPHONE'}</span>
             <ArrowRight size={16} />
@@ -251,7 +251,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({
           {onGoHome ? (
             <button
               onClick={onGoHome}
-              className="text-text-muted hover:text-gold uppercase tracking-wider transition-colors"
+              className="text-text-muted hover:text-text-primary uppercase tracking-wider transition-colors"
             >
               &larr; Home
             </button>
@@ -260,7 +260,7 @@ export const JoinPage: React.FC<JoinPageProps> = ({
           )}
           <button
             onClick={onOpenAdmin}
-            className="text-gold hover:text-gold-light uppercase tracking-wider transition-colors"
+            className="text-accent-blue hover:text-accent-blue-light uppercase tracking-wider transition-colors"
           >
             Open Control Room &rarr;
           </button>

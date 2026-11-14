@@ -409,14 +409,14 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
     <div className="min-h-screen bg-bg-main text-text-primary flex flex-col font-body">
       {/* ===================== TOP AUTOPLAY UNLOCK BANNER ===================== */}
       {audioEngineState !== 'running' && (
-        <div className="bg-burgundy-deep text-text-primary px-4 py-2 border-b border-gold/40 flex items-center justify-between text-xs font-mono font-bold z-50 shadow-md">
-          <div className="flex items-center gap-2 text-gold">
+        <div className="bg-bg-secondary text-text-primary px-4 py-2 border-b border-border flex items-center justify-between text-xs font-mono font-bold z-50 shadow-md">
+          <div className="flex items-center gap-2 text-accent-blue">
             <VolumeX size={15} className="shrink-0" />
             <span>PA SPEAKER OUTPUT MUTED // BROWSER AUTOPLAY RESTRICTION ACTIVE</span>
           </div>
           <button
             onClick={handleEngageAudio}
-            className="px-3.5 py-1.5 bg-gold text-bg-main uppercase text-[11px] btn-tactile hover:bg-gold-light font-bold flex items-center gap-1.5 shadow-sm rounded-lg transition-colors"
+            className="px-3.5 py-1.5 bg-accent-blue text-white uppercase text-[11px] btn-tactile hover:bg-accent-blue-hover font-bold flex items-center gap-1.5 shadow-sm rounded-lg transition-colors"
           >
             <Volume2 size={12} />
             <span>CLICK TO ENGAGE PA SPEAKERS</span>
@@ -429,7 +429,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
         {/* Left Wordmark & Session */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2.5 cursor-pointer" onClick={onGoHome} title="Go to Home Dashboard">
-            <div className="w-7 h-7 rounded-lg bg-burgundy-deep border border-gold/40 text-gold flex items-center justify-center font-bold shadow-sm">
+            <div className="w-7 h-7 rounded-lg bg-bg-card border border-border text-accent-blue flex items-center justify-center font-bold shadow-sm">
               <Radio size={15} className="animate-pulse" />
             </div>
             <h1 className="font-heading font-black text-xl tracking-widest uppercase text-text-primary">
@@ -440,7 +440,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
           <div className="flex items-center gap-3 text-xs font-mono">
             <span className="text-text-muted">SESSION:</span>
             <span className="font-bold text-text-primary">{sessionId}</span>
-            <span className="px-2 py-0.5 border border-border text-[10px] text-gold bg-burgundy-deep rounded">
+            <span className="px-2 py-0.5 border border-border text-[10px] text-accent-blue bg-bg-card rounded">
               {session?.sessionName || 'STAGE BROADCAST'}
             </span>
           </div>
@@ -452,11 +452,11 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
           <button
             onClick={handleEngageAudio}
             title="Click to toggle or test PA output chime"
-            className="flex items-center gap-1.5 px-2.5 py-1 border border-border bg-bg-main hover:border-gold/50 rounded-lg cursor-pointer transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1 border border-border bg-bg-card hover:border-border-hover rounded-lg cursor-pointer transition-colors"
           >
             {audioEngineState === 'running' ? (
-              <span className="text-gold font-bold flex items-center gap-1 text-[11px]">
-                <span className="w-2 h-2 rounded-full bg-gold animate-pulse" />
+              <span className="text-accent-blue font-bold flex items-center gap-1 text-[11px]">
+                <span className="w-2 h-2 rounded-full bg-accent-blue animate-pulse" />
                 <span>PA OUTPUT LIVE</span>
               </span>
             ) : (
@@ -468,19 +468,19 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
           </button>
 
           <div className="flex items-center gap-1.5">
-            <Wifi size={13} className="text-gold" />
+            <Wifi size={13} className="text-accent-blue" />
             <span className="text-text-muted">LAN IP:</span>
             <span className="font-semibold text-text-primary">{localIp}:5173</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Users size={13} className="text-gold" />
+            <Users size={13} className="text-accent-blue" />
             <span className="text-text-muted">UNITS:</span>
             <span className="font-semibold text-text-primary">{participants.length} CONNECTED</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Cpu size={13} className="text-gold" />
+            <Cpu size={13} className="text-accent-blue" />
             <span className="text-text-muted">ENGINE:</span>
-            <span className={`font-semibold uppercase ${session?.mode === 'auto' ? 'text-gold underline font-bold' : 'text-text-secondary'}`}>
+            <span className={`font-semibold uppercase ${session?.mode === 'auto' ? 'text-accent-blue underline font-bold' : 'text-text-secondary'}`}>
               {session?.mode || 'MANUAL'}
             </span>
           </div>
@@ -491,7 +491,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
           {onGoHome && (
             <button
               onClick={onGoHome}
-              className="px-2.5 py-1.5 bg-burgundy-deep border border-border text-xs font-mono text-text-secondary hover:text-gold hover:border-gold/50 rounded-lg btn-tactile flex items-center gap-1.5 transition-colors"
+              className="px-2.5 py-1.5 bg-bg-card border border-border text-xs font-mono text-text-secondary hover:text-text-primary hover:border-border-hover rounded-lg btn-tactile flex items-center gap-1.5 transition-colors"
               title="Return to Home Dashboard"
             >
               <Home size={13} />
@@ -505,7 +505,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
               setQrChannelNumber(undefined);
               setIsQRModalOpen(true);
             }}
-            className="px-3 py-1.5 bg-burgundy-deep border border-border text-xs font-mono text-text-primary hover:border-gold/50 hover:text-gold rounded-lg btn-tactile flex items-center gap-1.5 transition-colors"
+            className="px-3 py-1.5 bg-bg-card border border-border text-xs font-mono text-text-primary hover:border-border-hover hover:text-white rounded-lg btn-tactile flex items-center gap-1.5 transition-colors"
           >
             <QrCode size={13} />
             <span>CONNECT PHONES</span>
@@ -516,8 +516,8 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
             onClick={handleToggleMuteAll}
             className={`px-3 py-1.5 text-xs font-mono font-bold tracking-wider uppercase border rounded-lg btn-tactile flex items-center gap-1.5 transition-colors ${
               session?.isMuteAll
-                ? 'bg-burgundy-glow text-red-300 border-red-500/50'
-                : 'bg-burgundy-deep text-text-primary border-border hover:border-gold/50'
+                ? 'bg-red-950/60 text-red-300 border-red-500/50'
+                : 'bg-bg-card text-text-primary border-border hover:border-border-hover'
             }`}
           >
             <VolumeX size={13} />
@@ -530,7 +530,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
             className={`px-3 py-1.5 text-xs font-mono font-black tracking-widest uppercase border rounded-lg btn-tactile flex items-center gap-1.5 transition-colors ${
               session?.isEmergencyStop
                 ? 'bg-red-600 text-white border-red-500 ring-2 ring-red-400/40 animate-pulse'
-                : 'bg-burgundy-deep text-red-400 border-red-500/60 hover:bg-red-500 hover:text-white'
+                : 'bg-bg-card text-red-400 border-red-500/60 hover:bg-red-500 hover:text-white'
             }`}
           >
             <AlertOctagon size={14} />
@@ -541,9 +541,9 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
 
       {/* ===================== WORKSPACE LAYOUT ===================== */}
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Cinematic Ambient Glow & Halftone Overlay */}
-        <div className="absolute inset-0 cinematic-glow pointer-events-none" />
-        <div className="absolute inset-0 cinematic-halftone pointer-events-none" />
+        {/* Antigravity Ambient Glow & Dotted Halftone Texture */}
+        <div className="absolute inset-0 antigravity-glow pointer-events-none" />
+        <div className="absolute inset-0 antigravity-halftone pointer-events-none" />
 
         {/* ===================== LEFT SIDEBAR ===================== */}
         <nav className="relative z-10 w-56 bg-bg-secondary/70 backdrop-blur-sm border-r border-border flex flex-col p-3 gap-1 select-none">
@@ -566,7 +566,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                 onClick={() => handleTabChange(item.id as any)}
                 className={`w-full text-left px-3 py-2 text-xs font-mono tracking-wider flex items-center justify-between rounded-lg border transition-all ${
                   isActive
-                    ? 'bg-burgundy-deep border-gold/60 text-gold font-bold shadow-sm'
+                    ? 'bg-bg-card border-accent-blue text-accent-blue font-bold shadow-sm'
                     : 'bg-transparent text-text-secondary border-transparent hover:bg-bg-card hover:text-text-primary'
                 }`}
               >
@@ -576,7 +576,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                 </div>
                 {item.badge && (
                   <span className={`text-[10px] px-1.5 py-0.2 border rounded-xs font-mono ${
-                    isActive ? 'bg-gold text-bg-main border-gold font-bold' : 'bg-burgundy-deep text-text-muted border-border'
+                    isActive ? 'bg-accent-blue text-white border-accent-blue font-bold' : 'bg-bg-secondary text-text-muted border-border'
                   }`}>
                     {item.badge}
                   </span>
@@ -586,7 +586,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
           })}
 
           {/* Mode Switcher Shortcut */}
-          <div className="mt-auto p-3 bg-burgundy-deep/60 border border-border rounded-xl">
+          <div className="mt-auto p-3 bg-bg-card border border-border rounded-xl">
             <div className="text-[10px] font-mono text-text-muted uppercase mb-1.5 font-semibold">
               ARBITRATION MODE
             </div>
@@ -595,8 +595,8 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                 onClick={() => handleToggleMode('manual')}
                 className={`py-1.5 border rounded-md transition-colors ${
                   session?.mode === 'manual'
-                    ? 'bg-gold text-bg-main font-bold border-gold shadow-sm'
-                    : 'border-border text-text-secondary hover:text-gold hover:border-gold/40'
+                    ? 'bg-accent-blue text-white font-bold border-accent-blue shadow-sm'
+                    : 'border-border text-text-secondary hover:text-text-primary hover:border-border-hover'
                 }`}
               >
                 MANUAL
@@ -605,8 +605,8 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                 onClick={() => handleToggleMode('auto')}
                 className={`py-1.5 border rounded-md transition-colors ${
                   session?.mode === 'auto'
-                    ? 'bg-gold text-bg-main font-bold border-gold shadow-sm'
-                    : 'border-border text-text-secondary hover:text-gold hover:border-gold/40'
+                    ? 'bg-accent-blue text-white font-bold border-accent-blue shadow-sm'
+                    : 'border-border text-text-secondary hover:text-text-primary hover:border-border-hover'
                 }`}
               >
                 AUTO
@@ -626,7 +626,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
               {/* ==================== 1. SESSION SECTION ==================== */}
               <section className="p-5 bg-bg-card border border-border rounded-2xl shadow-xl shadow-black/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-xl bg-burgundy-deep border border-gold/40 text-gold flex items-center justify-center font-bold shadow-md">
+                  <div className="w-11 h-11 rounded-xl bg-bg-secondary border border-border text-accent-blue flex items-center justify-center font-bold shadow-sm">
                     <Radio size={20} className={activeSpeaker ? 'animate-pulse' : ''} />
                   </div>
                   <div>
@@ -646,8 +646,8 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
 
                 <div className="flex items-center flex-wrap gap-2.5">
                   {/* Connected Phone Count */}
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-main border border-border rounded-lg font-mono text-xs">
-                    <span className={`w-2 h-2 rounded-full ${participants.length > 0 ? 'bg-gold animate-pulse' : 'bg-text-muted'}`} />
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-secondary border border-border rounded-lg font-mono text-xs">
+                    <span className={`w-2 h-2 rounded-full ${participants.length > 0 ? 'bg-accent-blue animate-pulse' : 'bg-text-muted'}`} />
                     <span className="font-bold text-text-primary">
                       {participants.length} Phone{participants.length === 1 ? '' : 's'} Connected
                     </span>
@@ -656,10 +656,10 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                   {/* Copy Link Button */}
                   <button
                     onClick={handleCopyLink}
-                    className="px-3 py-1.5 bg-burgundy-deep border border-border text-xs font-mono text-text-primary hover:border-gold/50 hover:text-gold rounded-lg btn-tactile flex items-center gap-1.5 transition-colors"
+                    className="px-3 py-1.5 bg-bg-secondary border border-border text-xs font-mono text-text-primary hover:border-border-hover hover:text-white rounded-lg btn-tactile flex items-center gap-1.5 transition-colors"
                     title="Copy direct join link to clipboard"
                   >
-                    {copiedLink ? <Check size={13} className="text-gold" /> : <Copy size={13} />}
+                    {copiedLink ? <Check size={13} className="text-accent-blue" /> : <Copy size={13} />}
                     <span>{copiedLink ? 'COPIED!' : 'COPY JOIN LINK'}</span>
                   </button>
 
@@ -669,7 +669,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                       setQrChannelNumber(undefined);
                       setIsQRModalOpen(true);
                     }}
-                    className="px-3.5 py-1.5 bg-gold text-bg-main font-mono font-bold text-xs uppercase rounded-lg hover:bg-gold-light btn-tactile flex items-center gap-1.5 shadow-md transition-all active:scale-[0.99]"
+                    className="px-3.5 py-1.5 bg-accent-blue text-white font-mono font-semibold text-xs uppercase rounded-lg hover:bg-accent-blue-hover btn-tactile flex items-center gap-1.5 shadow-blue-glow transition-all active:scale-[0.99]"
                   >
                     <QrCode size={14} />
                     <span>SHOW QR CODE</span>
@@ -678,14 +678,14 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
               </section>
 
               {/* ==================== 2. MICROPHONE CONTROL ==================== */}
-              <section className="p-5 bg-bg-card border border-border rounded-2xl shadow-xl shadow-black/40 space-y-4">
+              <section className="p-5 bg-bg-card border border-border rounded-2xl shadow-card space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border/80 gap-2">
                   <div>
                     <h3 className="font-heading font-black text-base uppercase tracking-wider text-text-primary flex items-center gap-2">
                       <span>MICROPHONE CONTROL</span>
                       {activeSpeaker && (
-                        <span className="text-xs font-mono font-bold text-gold px-2.5 py-0.5 bg-burgundy-deep border border-gold/40 rounded-full flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />
+                        <span className="text-xs font-mono font-bold text-accent-blue px-2.5 py-0.5 bg-bg-secondary border border-accent-blue/40 rounded-full flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-accent-blue animate-pulse" />
                           <span>MIC {String(activeSpeaker.channelNumber).padStart(2, '0')} LIVE</span>
                         </span>
                       )}
@@ -699,19 +699,19 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleToggleMode(session?.mode === 'auto' ? 'manual' : 'auto')}
-                      className={`px-3 py-1.5 rounded-lg font-mono text-xs font-bold uppercase border transition-all flex items-center gap-2 ${
+                      className={`px-3 py-1.5 rounded-lg font-mono text-xs font-semibold uppercase border transition-all flex items-center gap-2 ${
                         session?.mode === 'auto'
-                          ? 'bg-burgundy-deep text-gold border-gold/50 hover:bg-gold hover:text-bg-main'
-                          : 'bg-bg-main text-text-secondary border-border hover:border-gold/50'
+                          ? 'bg-bg-secondary text-accent-blue border-accent-blue/50 hover:bg-accent-blue hover:text-white'
+                          : 'bg-bg-secondary text-text-secondary border-border hover:border-border-hover'
                       }`}
                     >
-                      <Cpu size={13} className={session?.mode === 'auto' ? 'text-gold' : ''} />
+                      <Cpu size={13} className={session?.mode === 'auto' ? 'text-accent-blue' : ''} />
                       <span>{session?.mode === 'auto' ? 'AUTO-SWITCHING: ON' : 'AUTO-SWITCHING: OFF'}</span>
                     </button>
                     {activeSpeaker && (
                       <button
                         onClick={() => handleSelectMic(null)}
-                        className="px-2.5 py-1.5 bg-burgundy-deep border border-border text-xs font-mono text-text-secondary hover:text-gold rounded-lg transition-colors"
+                        className="px-2.5 py-1.5 bg-bg-secondary border border-border text-xs font-mono text-text-secondary hover:text-white rounded-lg transition-colors"
                         title="Un-route current speaker floor"
                       >
                         UNROUTE
@@ -735,8 +735,8 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                       onClick={() => setMicFilter(tab.id as any)}
                       className={`px-3 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
                         micFilter === tab.id
-                          ? 'bg-gold text-bg-main border-gold shadow-sm font-bold'
-                          : 'bg-burgundy-deep text-text-secondary border-border hover:border-gold/40 hover:text-text-primary'
+                          ? 'bg-accent-blue text-white border-accent-blue shadow-sm font-bold'
+                          : 'bg-bg-secondary text-text-secondary border-border hover:border-border-hover hover:text-text-primary'
                       }`}
                     >
                       {tab.label}
@@ -809,12 +809,12 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                       setQrChannelNumber(undefined);
                       setIsQRModalOpen(true);
                     }}
-                    className="p-4 bg-bg-main border border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-2 h-36 hover:border-gold/60 cursor-pointer transition-colors group select-none"
+                    className="p-4 bg-bg-card border border-dashed border-border rounded-xl flex flex-col items-center justify-center gap-2 h-36 hover:border-accent-blue/50 cursor-pointer transition-colors group select-none shadow-card"
                   >
-                    <div className="w-8 h-8 rounded-full bg-burgundy-deep border border-border group-hover:border-gold/60 flex items-center justify-center font-bold text-text-secondary group-hover:text-gold transition-colors">
+                    <div className="w-8 h-8 rounded-full bg-bg-secondary border border-border group-hover:border-accent-blue/60 flex items-center justify-center font-bold text-text-secondary group-hover:text-accent-blue transition-colors">
                       +
                     </div>
-                    <div className="text-xs font-mono font-bold text-text-secondary group-hover:text-gold transition-colors">
+                    <div className="text-xs font-mono font-bold text-text-secondary group-hover:text-accent-blue transition-colors">
                       + CONNECT MIC {String(participants.length + 1).padStart(2, '0')}
                     </div>
                     <div className="text-[10px] text-text-muted font-mono">
@@ -825,11 +825,11 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
               </section>
 
               {/* ==================== 3. AUDIO OUTPUT SECTION ==================== */}
-              <section className="p-5 bg-bg-card border border-border rounded-2xl shadow-xl shadow-black/40 space-y-4">
+              <section className="p-5 bg-bg-card border border-border rounded-2xl shadow-card space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border/80 gap-2">
                   <div>
                     <h3 className="font-heading font-black text-base uppercase tracking-wider text-text-primary flex items-center gap-2">
-                      <Volume2 size={18} className="text-gold" />
+                      <Volume2 size={18} className="text-accent-blue" />
                       <span>AUDIO OUTPUT &amp; PA SPEAKERS</span>
                     </h3>
                     <p className="text-xs text-text-secondary mt-0.5">
@@ -843,11 +843,11 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                       onClick={handleEngageAudio}
                       className={`px-3 py-1 rounded-full text-xs font-mono font-bold flex items-center gap-1.5 border transition-all ${
                         audioEngineState === 'running'
-                          ? 'bg-burgundy-deep text-gold border-gold/40'
-                          : 'bg-burgundy-deep text-yellow-300 border-yellow-500/40 animate-pulse'
+                          ? 'bg-bg-secondary text-accent-blue border-accent-blue/40'
+                          : 'bg-bg-secondary text-yellow-300 border-yellow-500/40 animate-pulse'
                       }`}
                     >
-                      <span className={`w-2 h-2 rounded-full ${audioEngineState === 'running' ? 'bg-gold animate-pulse' : 'bg-yellow-400'}`} />
+                      <span className={`w-2 h-2 rounded-full ${audioEngineState === 'running' ? 'bg-accent-blue animate-pulse' : 'bg-yellow-400'}`} />
                       <span>{audioEngineState === 'running' ? 'PA OUTPUT LIVE' : 'CLICK TO UNMUTE PA'}</span>
                     </button>
                   </div>
@@ -855,7 +855,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
                   {/* Master Hardware VU Meter */}
-                  <div className="p-3.5 bg-bg-main border border-border rounded-xl">
+                  <div className="p-3.5 bg-bg-secondary border border-border rounded-xl">
                     <RetroVUMeter
                       level={session?.isEmergencyStop || session?.isMuteAll ? 0 : masterAudioLevel}
                       segments={22}
@@ -866,10 +866,10 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                   </div>
 
                   {/* Master Volume Slider */}
-                  <div className="p-3.5 bg-bg-main border border-border rounded-xl space-y-1.5">
+                  <div className="p-3.5 bg-bg-secondary border border-border rounded-xl space-y-1.5">
                     <div className="flex justify-between items-center text-xs font-mono">
                       <span className="text-text-secondary font-semibold">MASTER VOLUME</span>
-                      <span className="font-bold text-gold">{masterVolume}%</span>
+                      <span className="font-bold text-accent-blue">{masterVolume}%</span>
                     </div>
                     <input
                       type="range"
@@ -877,7 +877,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                       max={100}
                       value={masterVolume}
                       onChange={(e) => handleMasterVolumeChange(Number(e.target.value))}
-                      className="w-full accent-[#D6B36A] bg-burgundy-deep h-1.5 rounded-lg cursor-pointer"
+                      className="w-full accent-[#3478F6] bg-bg-card h-1.5 rounded-lg cursor-pointer"
                     />
                   </div>
 
@@ -888,7 +888,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                         await hostAudio.initAudio();
                         hostAudio.playTestChime();
                       }}
-                      className="flex-1 py-3 px-3 bg-gold text-bg-main font-mono text-xs font-bold uppercase rounded-lg hover:bg-gold-light btn-tactile flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-[0.99]"
+                      className="flex-1 py-3 px-3 bg-accent-blue text-white font-mono text-xs font-semibold uppercase rounded-lg hover:bg-accent-blue-hover btn-tactile flex items-center justify-center gap-1.5 shadow-blue-glow transition-all active:scale-[0.99]"
                     >
                       <Volume2 size={14} />
                       <span>PLAY TEST CHIME</span>
@@ -896,10 +896,10 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
 
                     <button
                       onClick={handleToggleMuteAll}
-                      className={`flex-1 py-3 px-3 border font-mono text-xs font-bold uppercase rounded-lg btn-tactile flex items-center justify-center gap-1.5 transition-colors ${
+                      className={`flex-1 py-3 px-3 border font-mono text-xs font-semibold uppercase rounded-lg btn-tactile flex items-center justify-center gap-1.5 transition-colors ${
                         session?.isMuteAll
-                          ? 'bg-burgundy-glow text-red-300 border-red-500/50'
-                          : 'bg-burgundy-deep text-text-primary border-border hover:border-gold/50 hover:text-gold'
+                          ? 'bg-red-950/60 text-red-300 border-red-500/50'
+                          : 'bg-bg-secondary text-text-primary border-border hover:border-border-hover'
                       }`}
                     >
                       <VolumeX size={14} />
@@ -938,7 +938,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                         setQrChannelNumber(undefined);
                         setIsQRModalOpen(true);
                       }}
-                      className="px-4 py-2 bg-gold text-bg-main font-bold font-mono text-xs uppercase rounded-lg hover:bg-gold-light transition-all shadow-md"
+                      className="px-4 py-2 bg-accent-blue text-white font-semibold font-mono text-xs uppercase rounded-lg hover:bg-accent-blue-hover transition-all shadow-blue-glow"
                     >
                       SHOW QR CODE TO JOIN
                     </button>
@@ -960,7 +960,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                           const isLive = session?.activeSpeakerId === p.id;
                           const isMuted = p.isMutedByAdmin || p.isMutedSelf || session?.isMuteAll || session?.isEmergencyStop;
                           return (
-                            <tr key={p.id} className={`hover:bg-burgundy-subtle transition-colors ${isLive ? 'bg-burgundy-deep/60' : ''}`}>
+                            <tr key={p.id} className={`hover:bg-bg-secondary/40 transition-colors ${isLive ? 'bg-bg-secondary/70 border-l-2 border-l-accent-blue' : ''}`}>
                               <td className="py-3 px-3 font-bold text-text-primary">
                                 MIC {String(p.channelNumber).padStart(2, '0')}
                               </td>
@@ -970,8 +970,8 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                               </td>
                               <td className="py-3 px-3">
                                 {isLive ? (
-                                  <span className="text-gold font-bold flex items-center gap-1.5">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />
+                                  <span className="text-accent-blue font-bold flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-accent-blue animate-pulse" />
                                     <span>LIVE ON AIR</span>
                                   </span>
                                 ) : isMuted ? (
@@ -981,9 +981,9 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                                 )}
                               </td>
                               <td className="py-3 px-3 w-40">
-                                <div className="h-2 bg-bg-main border border-border rounded-full overflow-hidden">
+                                <div className="h-2 bg-bg-secondary border border-border rounded-full overflow-hidden">
                                   <div
-                                    className={`h-full transition-all duration-75 ${isLive ? 'bg-gold' : 'bg-text-secondary'}`}
+                                    className={`h-full transition-all duration-75 ${isLive ? 'bg-accent-blue' : 'bg-text-secondary'}`}
                                     style={{ width: `${p.audioLevel || 0}%` }}
                                   />
                                 </div>
@@ -993,21 +993,21 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                                   onClick={() => handleSelectMic(isLive ? null : p.id)}
                                   className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase transition-colors ${
                                     isLive
-                                      ? 'bg-burgundy-deep text-text-secondary border border-border hover:text-gold hover:border-gold/50'
-                                      : 'bg-gold text-bg-main hover:bg-gold-light'
+                                      ? 'bg-bg-secondary text-text-secondary border border-border hover:text-white'
+                                      : 'bg-accent-blue text-white hover:bg-accent-blue-hover'
                                   }`}
                                 >
                                   {isLive ? 'UNROUTE' : 'MAKE LIVE'}
                                 </button>
                                 <button
                                   onClick={() => handleToggleMuteParticipant(p.id, !isMuted)}
-                                  className="px-2.5 py-1 bg-burgundy-deep border border-border hover:border-gold/40 rounded-md text-[11px] text-text-secondary hover:text-gold uppercase transition-colors"
+                                  className="px-2.5 py-1 bg-bg-secondary border border-border hover:border-border-hover rounded-md text-[11px] text-text-secondary hover:text-text-primary uppercase transition-colors"
                                 >
                                   {isMuted ? 'UNMUTE' : 'MUTE'}
                                 </button>
                                 <button
                                   onClick={() => handleKickParticipant(p.id)}
-                                  className="px-2.5 py-1 bg-burgundy-deep border border-border hover:border-red-400 rounded-md text-[11px] text-red-400 uppercase transition-colors"
+                                  className="px-2.5 py-1 bg-bg-secondary border border-border hover:border-red-400 rounded-md text-[11px] text-red-400 uppercase transition-colors"
                                   title="Disconnect handset"
                                 >
                                   DISCONNECT
@@ -1023,13 +1023,13 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
               </section>
 
               {/* ==================== COLLAPSIBLE ADVANCED DIAGNOSTICS ==================== */}
-              <div className="bg-bg-card border border-border rounded-2xl overflow-hidden text-xs shadow-md">
+              <div className="bg-bg-card border border-border rounded-2xl overflow-hidden text-xs shadow-card">
                 <button
                   onClick={() => setShowAdvancedDiagnostics(!showAdvancedDiagnostics)}
-                  className="w-full p-3.5 flex items-center justify-between text-text-secondary hover:text-gold font-mono font-bold uppercase tracking-wider bg-bg-secondary/60 transition-colors"
+                  className="w-full p-3.5 flex items-center justify-between text-text-secondary hover:text-text-primary font-mono font-bold uppercase tracking-wider bg-bg-secondary transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <Settings size={14} className="text-gold" />
+                    <Settings size={14} className="text-accent-blue" />
                     <span>ADVANCED SYSTEM DIAGNOSTICS &amp; TELEMETRY</span>
                   </div>
                   {showAdvancedDiagnostics ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -1197,8 +1197,8 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
 
               {/* Handset Grid */}
               {filteredParticipants.length === 0 ? (
-                <div className="p-12 bg-bg-card border border-border rounded-2xl shadow-xl shadow-black/40 text-center flex flex-col items-center justify-center gap-3">
-                  <Radio size={32} className="text-gold animate-pulse" />
+                <div className="p-12 bg-bg-card border border-border rounded-2xl shadow-card text-center flex flex-col items-center justify-center gap-3">
+                  <Radio size={32} className="text-accent-blue animate-pulse" />
                   <div>
                     <h4 className="font-heading font-bold text-base tracking-wider uppercase text-text-primary">
                       {participants.length === 0
@@ -1219,14 +1219,14 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                           setQrChannelNumber(undefined);
                           setIsQRModalOpen(true);
                         }}
-                        className="px-4 py-2 bg-gold text-bg-main font-mono font-bold text-xs uppercase rounded-lg hover:bg-gold-light transition-all shadow-md"
+                        className="px-4 py-2 bg-accent-blue text-white font-mono font-semibold text-xs uppercase rounded-lg hover:bg-accent-blue-hover transition-all shadow-blue-glow"
                       >
                         OPEN PAIRING QR CODE
                       </button>
                     ) : (
                       <button
                         onClick={() => setMicFilter('all')}
-                        className="px-4 py-2 bg-gold text-bg-main font-mono font-bold text-xs uppercase rounded-lg hover:bg-gold-light transition-all shadow-md"
+                        className="px-4 py-2 bg-accent-blue text-white font-mono font-semibold text-xs uppercase rounded-lg hover:bg-accent-blue-hover transition-all shadow-blue-glow"
                       >
                         RESET TO ALL HANDSETS
                       </button>
@@ -1281,10 +1281,10 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleToggleMode(session?.mode === 'auto' ? 'manual' : 'auto')}
-                    className={`px-3.5 py-1.5 font-mono font-bold text-xs uppercase border rounded-lg btn-tactile transition-all shadow-sm ${
+                    className={`px-3.5 py-1.5 font-mono font-semibold text-xs uppercase border rounded-lg btn-tactile transition-all shadow-sm ${
                       session?.mode === 'auto'
-                        ? 'bg-gold text-bg-main border-gold hover:bg-gold-light'
-                        : 'bg-burgundy-deep text-text-primary border-border hover:border-gold/50 hover:text-gold'
+                        ? 'bg-accent-blue text-white border-accent-blue hover:bg-accent-blue-hover shadow-blue-glow'
+                        : 'bg-bg-secondary text-text-primary border-border hover:border-border-hover hover:text-white'
                     }`}
                   >
                     {session?.mode === 'auto' ? 'AUTO ENGINE ENGAGED' : 'ENGAGE AUTO ARBITRATION'}
@@ -1301,7 +1301,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
               />
 
               {/* Priority Arbitration Rules Reference Card */}
-              <div className="bg-bg-card border border-border p-5 rounded-2xl shadow-xl shadow-black/40 flex flex-col gap-3.5 font-mono text-xs">
+              <div className="bg-bg-card border border-border p-5 rounded-2xl shadow-card flex flex-col gap-3.5 font-mono text-xs">
                 <div className="pb-2.5 border-b border-border">
                   <h3 className="font-heading font-bold text-sm tracking-wider uppercase text-text-primary">
                     ARBITRATION PREEMPTION &amp; TIMING SPECIFICATION
@@ -1312,21 +1312,21 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="p-3.5 bg-bg-main/80 border border-border rounded-xl flex flex-col gap-1.5">
-                    <span className="font-bold text-gold">VIP (SCORE: 3)</span>
+                  <div className="p-3.5 bg-bg-secondary border border-border rounded-xl flex flex-col gap-1.5">
+                    <span className="font-bold text-accent-blue">VIP (SCORE: 3)</span>
                     <span className="text-[11px] text-text-secondary leading-relaxed">
                       Moderators &amp; Stage Chairs. Can preempt Normal and Low participants once the active speaker lock duration has passed.
                     </span>
                   </div>
 
-                  <div className="p-3.5 bg-bg-main/80 border border-border rounded-xl flex flex-col gap-1.5">
+                  <div className="p-3.5 bg-bg-secondary border border-border rounded-xl flex flex-col gap-1.5">
                     <span className="font-bold text-text-primary">NORMAL (SCORE: 2)</span>
                     <span className="text-[11px] text-text-secondary leading-relaxed">
                       Standard audience question microphones. Contenders compete based on who starts speaking first, with lock timer protection.
                     </span>
                   </div>
 
-                  <div className="p-3.5 bg-bg-main/80 border border-border rounded-xl flex flex-col gap-1.5">
+                  <div className="p-3.5 bg-bg-secondary border border-border rounded-xl flex flex-col gap-1.5">
                     <span className="font-bold text-text-muted">LOW (SCORE: 1)</span>
                     <span className="text-[11px] text-text-secondary leading-relaxed">
                       Observer or background mics. Readily yielded to any Normal or VIP contender upon active voice activity.
@@ -1358,7 +1358,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                       await hostAudio.initAudio();
                       hostAudio.playTestChime();
                     }}
-                    className="px-3.5 py-1.5 bg-gold text-bg-main font-mono font-bold text-xs uppercase rounded-lg hover:bg-gold-light btn-tactile flex items-center gap-1.5 shadow-md transition-all active:scale-[0.99]"
+                    className="px-3.5 py-1.5 bg-accent-blue text-white font-mono font-semibold text-xs uppercase rounded-lg hover:bg-accent-blue-hover btn-tactile flex items-center gap-1.5 shadow-blue-glow transition-all active:scale-[0.99]"
                   >
                     <Volume2 size={13} />
                     <span>TEST 440Hz CHIME</span>
@@ -1368,14 +1368,14 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
 
               <AudioOutputPanel
                 hostAudio={hostAudio}
-                activeSpeakerName={activeSpeaker ? `MIC ${String(activeSpeaker.channelNumber).padStart(2, '0')} (${activeSpeaker.name})` : null}
+                activeSpeakerName={activeSpeaker ? `MIC ${String(activeSpeaker.channelNumber).padStart(2, '0')} (${activeSpeaker.name})` : undefined}
                 isMuteAll={!!session?.isMuteAll}
                 isEmergencyStop={!!session?.isEmergencyStop}
               />
 
               {/* Host Audio Signal Flow Schematic */}
-              <div className="bg-bg-card border border-border p-5 rounded-2xl shadow-xl shadow-black/40 flex flex-col gap-2.5 font-mono text-xs">
-                <div className="pb-1.5 border-b border-border text-[10px] text-gold uppercase font-bold tracking-wider">
+              <div className="bg-bg-card border border-border p-5 rounded-2xl shadow-card flex flex-col gap-2.5 font-mono text-xs">
+                <div className="pb-1.5 border-b border-border text-[10px] text-accent-blue uppercase font-bold tracking-wider">
                   AUDIO SIGNAL GRAPH ROUTING SCHEMATIC
                 </div>
                 <div className="p-3.5 bg-bg-main/80 border border-border rounded-xl text-[11px] leading-relaxed text-text-secondary overflow-x-auto">
@@ -1423,13 +1423,13 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
 
               {/* Link Health Telemetry Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 font-mono text-xs">
-                <div className="p-4 bg-bg-card border border-border rounded-xl shadow-md flex flex-col gap-2">
+                <div className="p-4 bg-bg-card border border-border rounded-xl shadow-card flex flex-col gap-2">
                   <div className="flex items-center justify-between text-text-muted text-[10px] uppercase font-bold">
-                    <span className="flex items-center gap-1.5 text-gold">
+                    <span className="flex items-center gap-1.5 text-accent-blue">
                       <Server size={13} />
                       <span>SIGNALING SERVER</span>
                     </span>
-                    <span className="text-gold font-bold">ONLINE</span>
+                    <span className="text-accent-blue font-bold">ONLINE</span>
                   </div>
                   <div className="font-bold text-text-primary text-sm">
                     {socket?.connected ? 'CONNECTED (SOCKET.IO)' : 'CONNECTING...'}
@@ -1442,13 +1442,13 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                   </div>
                 </div>
 
-                <div className="p-4 bg-bg-card border border-border rounded-xl shadow-md flex flex-col gap-2">
+                <div className="p-4 bg-bg-card border border-border rounded-xl shadow-card flex flex-col gap-2">
                   <div className="flex items-center justify-between text-text-muted text-[10px] uppercase font-bold">
-                    <span className="flex items-center gap-1.5 text-gold">
+                    <span className="flex items-center gap-1.5 text-accent-blue">
                       <HardDrive size={13} />
                       <span>WEB AUDIO ENGINE</span>
                     </span>
-                    <span className="text-gold font-bold">{hostAudio.getAudioContext()?.state.toUpperCase() || 'OFF'}</span>
+                    <span className="text-accent-blue font-bold">{hostAudio.getAudioContext()?.state.toUpperCase() || 'OFF'}</span>
                   </div>
                   <div className="font-bold text-text-primary text-sm">
                     {hostAudio.getAudioContext()?.state === 'running' ? '48,000 HZ ACTIVE' : 'SUSPENDED'}
@@ -1461,13 +1461,13 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                   </div>
                 </div>
 
-                <div className="p-4 bg-bg-card border border-border rounded-xl shadow-md flex flex-col gap-2">
+                <div className="p-4 bg-bg-card border border-border rounded-xl shadow-card flex flex-col gap-2">
                   <div className="flex items-center justify-between text-text-muted text-[10px] uppercase font-bold">
-                    <span className="flex items-center gap-1.5 text-gold">
+                    <span className="flex items-center gap-1.5 text-accent-blue">
                       <Wifi size={13} />
                       <span>WEBRTC MESH</span>
                     </span>
-                    <span className="text-gold font-bold">{hostAudio.getPeerConnections().size} PEERS</span>
+                    <span className="text-accent-blue font-bold">{hostAudio.getPeerConnections().size} PEERS</span>
                   </div>
                   <div className="font-bold text-text-primary text-sm">
                     DIRECT LAN UDP
@@ -1482,7 +1482,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
               </div>
 
               {/* WebRTC Real-Time Hardware Diagnostics Table */}
-              <div className="bg-bg-card border border-border p-5 rounded-2xl shadow-xl shadow-black/40 flex flex-col gap-3.5 font-mono text-xs">
+              <div className="bg-bg-card border border-border p-5 rounded-2xl shadow-card flex flex-col gap-3.5 font-mono text-xs">
                 <div className="flex items-center justify-between pb-2.5 border-b border-border">
                   <div>
                     <span className="font-heading font-bold text-sm tracking-wider uppercase text-text-primary">
@@ -1492,7 +1492,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                       Actual measured physical network statistics and jitter buffer health (no simulated indicators).
                     </p>
                   </div>
-                  <span className="text-[10px] text-gold font-bold px-2.5 py-0.5 bg-burgundy-deep border border-gold/40 rounded-full">
+                  <span className="text-[10px] text-accent-blue font-bold px-2.5 py-0.5 bg-bg-secondary border border-accent-blue/40 rounded-full">
                     REAL-TIME SENSORS
                   </span>
                 </div>
@@ -1604,34 +1604,34 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="p-3.5 bg-bg-main/80 border border-border rounded-xl flex flex-col gap-2">
-                    <div className="font-bold text-gold">ADD TEST PARTICIPANT (VIP)</div>
+                  <div className="p-3.5 bg-bg-secondary border border-border rounded-xl flex flex-col gap-2">
+                    <div className="font-bold text-accent-blue">ADD TEST PARTICIPANT (VIP)</div>
                     <p className="text-[11px] text-text-muted leading-relaxed">Simulate Moderator or Stage Chair with highest priority (Score 3).</p>
                     <button
                       onClick={() => handleInjectVirtualParticipant('Stage Moderator (VIP)', 'VIP')}
-                      className="mt-auto py-2 px-3 bg-gold text-bg-main font-mono font-bold text-xs uppercase rounded-lg hover:bg-gold-light btn-tactile shadow-md transition-all active:scale-[0.99]"
+                      className="mt-auto py-2 px-3 bg-accent-blue text-white font-mono font-semibold text-xs uppercase rounded-lg hover:bg-accent-blue-hover btn-tactile shadow-blue-glow transition-all active:scale-[0.99]"
                     >
                       + INJECT VIP MIC
                     </button>
                   </div>
 
-                  <div className="p-3.5 bg-bg-main/80 border border-border rounded-xl flex flex-col gap-2">
+                  <div className="p-3.5 bg-bg-secondary border border-border rounded-xl flex flex-col gap-2">
                     <div className="font-bold text-text-primary">ADD TEST PARTICIPANT (NORMAL)</div>
                     <p className="text-[11px] text-text-muted leading-relaxed">Simulate audience question microphone (Score 2).</p>
                     <button
                       onClick={() => handleInjectVirtualParticipant('Audience Floor MIC', 'Normal')}
-                      className="mt-auto py-2 px-3 bg-burgundy-deep border border-border text-text-primary font-mono text-xs uppercase rounded-lg btn-tactile hover:border-gold/50 hover:text-gold transition-colors"
+                      className="mt-auto py-2 px-3 bg-bg-card border border-border text-text-primary font-mono text-xs uppercase rounded-lg btn-tactile hover:border-border-hover hover:text-white transition-colors"
                     >
                       + INJECT NORMAL MIC
                     </button>
                   </div>
 
-                  <div className="p-3.5 bg-bg-main/80 border border-border rounded-xl flex flex-col gap-2">
+                  <div className="p-3.5 bg-bg-secondary border border-border rounded-xl flex flex-col gap-2">
                     <div className="font-bold text-text-muted">ADD TEST PARTICIPANT (LOW)</div>
                     <p className="text-[11px] text-text-muted leading-relaxed">Simulate observer microphone (Score 1).</p>
                     <button
                       onClick={() => handleInjectVirtualParticipant('Guest Observer MIC', 'Low')}
-                      className="mt-auto py-2 px-3 bg-burgundy-deep border border-border text-text-primary font-mono text-xs uppercase rounded-lg btn-tactile hover:border-gold/50 hover:text-gold transition-colors"
+                      className="mt-auto py-2 px-3 bg-bg-card border border-border text-text-primary font-mono text-xs uppercase rounded-lg btn-tactile hover:border-border-hover hover:text-white transition-colors"
                     >
                       + INJECT LOW MIC
                     </button>
@@ -1646,13 +1646,13 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
         {/* ===================== RIGHT-SIDE MONITORING PANEL ===================== */}
         <aside className="w-72 bg-bg-secondary/70 backdrop-blur-sm border-l border-border flex flex-col p-3.5 gap-4 overflow-y-auto select-none">
           {/* Status Box */}
-          <section className="bg-bg-card border border-border p-3.5 rounded-xl space-y-2 text-xs font-mono shadow-md">
+          <section className="bg-bg-card border border-border p-3.5 rounded-xl space-y-2 text-xs font-mono shadow-card">
             <div className="text-[10px] text-text-muted uppercase tracking-widest font-bold pb-1.5 border-b border-border">
               ARBITRATION STATUS
             </div>
             <div className="flex justify-between">
               <span className="text-text-secondary">Current Speaker:</span>
-              <span className="font-bold text-gold">
+              <span className="font-bold text-accent-blue">
                 {activeSpeaker ? `MIC ${String(activeSpeaker.channelNumber).padStart(2, '0')}` : 'NONE'}
               </span>
             </div>
@@ -1670,14 +1670,14 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
             </div>
             <div className="flex justify-between">
               <span className="text-text-secondary">Host PA State:</span>
-              <span className="text-gold font-bold">
+              <span className="text-accent-blue font-bold">
                 {session?.isEmergencyStop ? 'MUTED (STOP)' : session?.isMuteAll ? 'MUTED (ALL)' : 'AUDIBLE'}
               </span>
             </div>
           </section>
 
           {/* Real-time Eligible Queue */}
-          <section className="bg-bg-card border border-border p-3.5 rounded-xl space-y-2 text-xs font-mono shadow-md">
+          <section className="bg-bg-card border border-border p-3.5 rounded-xl space-y-2 text-xs font-mono shadow-card">
             <div className="text-[10px] text-text-muted uppercase tracking-widest font-bold pb-1.5 border-b border-border flex justify-between">
               <span>CONTENDERS QUEUE</span>
               <span>PRIORITY</span>
@@ -1697,8 +1697,8 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                         key={p.id}
                         className={`flex items-center justify-between p-2 rounded-lg border text-[11px] transition-all ${
                           isActive
-                            ? 'bg-burgundy-deep text-gold font-bold border-gold/60 shadow-sm'
-                            : 'bg-bg-main text-text-secondary border-border'
+                            ? 'bg-bg-secondary text-accent-blue font-bold border-accent-blue/50 shadow-sm'
+                            : 'bg-bg-card text-text-secondary border-border'
                         }`}
                       >
                         <span className="truncate max-w-[120px]">
@@ -1706,7 +1706,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                         </span>
                         <div className="flex items-center gap-1.5">
                           {p.isSpeaking && !isMuted && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-gold animate-ping" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-accent-blue animate-pulse" />
                           )}
                           <span>{p.priority}</span>
                         </div>

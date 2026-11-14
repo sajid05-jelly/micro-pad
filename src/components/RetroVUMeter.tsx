@@ -40,12 +40,12 @@ export const RetroVUMeter: React.FC<RetroVUMeterProps> = ({
       {label && (
         <div className="flex justify-between items-center text-[10px] text-text-secondary uppercase tracking-widest">
           <span>{label}</span>
-          <span className="font-bold text-gold">{numericValue ?? (level > 0 ? `-${Math.round((100 - level) * 0.4)} dB` : '-INF dB')}</span>
+          <span className="font-bold text-accent-blue">{numericValue ?? (level > 0 ? `-${Math.round((100 - level) * 0.4)} dB` : '-INF dB')}</span>
         </div>
       )}
 
       {/* Meter Bar */}
-      <div className={`w-full ${height} bg-bg-main border border-border/80 rounded-md flex items-center p-0.5 gap-0.5 relative shadow-inner`}>
+      <div className={`w-full ${height} bg-bg-secondary border border-border rounded-md flex items-center p-0.5 gap-0.5 relative shadow-inner`}>
         {Array.from({ length: segments }).map((_, i) => {
           const isActive = i < activeCount;
           const isPeakBar = i === peakSegmentIndex && peakHold > 5;
@@ -57,11 +57,11 @@ export const RetroVUMeter: React.FC<RetroVUMeterProps> = ({
               className={`flex-1 h-full rounded-xs transition-all duration-75 ${
                 isActive
                   ? isOverload
-                    ? 'bg-gold-light shadow-[0_0_8px_rgba(232,201,141,0.5)]'
-                    : 'bg-gold shadow-[0_0_4px_rgba(214,179,106,0.3)]'
+                    ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.7)]'
+                    : 'bg-accent-blue shadow-[0_0_6px_rgba(52,120,246,0.5)]'
                   : isPeakBar
-                  ? 'bg-gold/40 border-b border-gold-light'
-                  : 'bg-burgundy-subtle/80'
+                  ? 'bg-accent-blue/50 border-b border-accent-blue'
+                  : 'bg-[#18181D]'
               }`}
             />
           );
@@ -76,7 +76,7 @@ export const RetroVUMeter: React.FC<RetroVUMeterProps> = ({
           <span>-6</span>
           <span>-3</span>
           <span>0</span>
-          <span className="text-gold font-bold">+3</span>
+          <span className="text-red-400 font-bold">+3</span>
         </div>
       )}
     </div>

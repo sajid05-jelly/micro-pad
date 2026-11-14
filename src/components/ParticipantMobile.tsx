@@ -383,14 +383,14 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
 
   return (
     <div className="min-h-screen bg-bg-main text-text-primary flex flex-col p-4 w-full sm:max-w-md mx-auto relative select-none overflow-x-hidden">
-      {/* Cinematic Ambient Glow & Halftone Overlay */}
-      <div className="absolute inset-0 cinematic-glow pointer-events-none" />
-      <div className="absolute inset-0 cinematic-halftone pointer-events-none" />
+      {/* Antigravity Ambient Glow & Dotted Halftone Texture */}
+      <div className="absolute inset-0 antigravity-glow pointer-events-none" />
+      <div className="absolute inset-0 antigravity-halftone pointer-events-none" />
 
       {/* Header */}
       <header className="relative z-10 flex items-center justify-between pb-3.5 border-b border-border/80 mb-3.5">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-burgundy-deep border border-gold/40 text-gold flex items-center justify-center font-bold shadow-sm">
+          <div className="w-8 h-8 rounded-lg bg-bg-card border border-border text-accent-blue flex items-center justify-center font-bold shadow-sm">
             <Radio size={16} className={isLiveOnAir ? 'animate-pulse' : ''} />
           </div>
           <div>
@@ -407,8 +407,8 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
           </div>
           <div className="flex items-center justify-end gap-1.5 text-[10px]">
             {isAudioLive ? (
-              <span className="text-gold font-bold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" />
+              <span className="text-accent-blue font-bold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent-blue animate-pulse" />
                 <span>MIC LIVE</span>
               </span>
             ) : (
@@ -423,7 +423,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
 
       {/* Connection Offline Banner */}
       {connectionStatus !== 'CONNECTED' && (
-        <div className="relative z-10 mb-3 p-3 bg-burgundy-deep/80 border border-red-500/40 rounded-xl flex items-center justify-between text-xs font-mono shadow-sm">
+        <div className="relative z-10 mb-3 p-3 bg-bg-secondary border border-red-500/40 rounded-xl flex items-center justify-between text-xs font-mono shadow-sm">
           <div className="flex items-center gap-2">
             <WifiOff size={14} className="text-red-400 shrink-0" />
             <span className="truncate max-w-[200px] text-red-200">
@@ -432,7 +432,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
           </div>
           <button
             onClick={onRetryConnection}
-            className="px-2.5 py-1 bg-gold text-bg-main font-bold text-[10px] uppercase rounded-lg hover:bg-gold-light flex items-center gap-1 shrink-0 transition-colors"
+            className="px-2.5 py-1 bg-accent-blue text-white font-bold text-[10px] uppercase rounded-lg hover:bg-accent-blue-hover flex items-center gap-1 shrink-0 transition-colors"
           >
             <RefreshCw size={10} />
             <span>RETRY</span>
@@ -442,14 +442,14 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
 
       {/* AudioContext Suspended Warning (Mobile Browser Gesture Required) */}
       {diagnostics && diagnostics.audioContextState === 'suspended' && (
-        <div className="relative z-10 mb-3 p-3 bg-burgundy-deep border border-gold/40 rounded-xl flex items-center justify-between text-xs font-mono shadow-sm">
-          <div className="flex items-center gap-2 text-gold">
+        <div className="relative z-10 mb-3 p-3 bg-bg-secondary border border-border rounded-xl flex items-center justify-between text-xs font-mono shadow-sm">
+          <div className="flex items-center gap-2 text-accent-blue">
             <AlertCircle size={14} className="shrink-0" />
             <span className="text-[11px] font-bold">AUDIO ENGINE SUSPENDED</span>
           </div>
           <button
             onClick={handleResumeAudioContext}
-            className="px-3 py-1 bg-gold text-bg-main font-bold text-[10px] uppercase rounded-lg hover:bg-gold-light shrink-0 transition-colors"
+            className="px-3 py-1 bg-accent-blue text-white font-bold text-[10px] uppercase rounded-lg hover:bg-accent-blue-hover shrink-0 transition-colors"
           >
             RESUME MIC
           </button>
@@ -460,13 +460,13 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
       {netStats && (
         <div className={`relative z-10 mb-3 px-3 py-2 rounded-xl border flex items-center justify-between text-xs font-mono shadow-sm ${
           netStats.isDistanceWarning
-            ? 'bg-burgundy-deep/90 border-yellow-500/70 text-yellow-200'
+            ? 'bg-bg-secondary border-yellow-500/70 text-yellow-200'
             : 'bg-bg-card border-border text-text-secondary'
         }`}>
           <div className="flex items-center gap-2">
             <Wifi size={14} className={
               netStats.quality === 'POOR' ? 'text-red-400 animate-pulse' :
-              netStats.quality === 'FAIR' ? 'text-yellow-400' : 'text-gold'
+              netStats.quality === 'FAIR' ? 'text-yellow-400' : 'text-accent-blue'
             } />
             <span className="font-bold text-[11px]">
               {netStats.quality === 'POOR' ? 'WEAK WI-FI' :
@@ -477,7 +477,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
             </span>
           </div>
           {netStats.wifiSignalHint && (
-            <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-bg-main border border-border/50 text-text-muted">
+            <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-bg-secondary border border-border text-text-muted">
               {netStats.wifiSignalHint}
             </span>
           )}
@@ -486,10 +486,10 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
 
       {/* Distance Dropout Warning Alert */}
       {netStats?.isDistanceWarning && (
-        <div className="relative z-10 mb-3 p-3 bg-burgundy-deep border border-yellow-500/70 rounded-xl flex items-start gap-2.5 text-xs text-yellow-200 font-mono animate-pulse shadow-lg">
-          <AlertCircle size={16} className="text-gold shrink-0 mt-0.5" />
+        <div className="relative z-10 mb-3 p-3 bg-bg-secondary border border-yellow-500/70 rounded-xl flex items-start gap-2.5 text-xs text-yellow-200 font-mono animate-pulse shadow-lg">
+          <AlertCircle size={16} className="text-yellow-400 shrink-0 mt-0.5" />
           <div className="space-y-0.5">
-            <div className="font-bold text-[11px] uppercase tracking-wide text-gold">
+            <div className="font-bold text-[11px] uppercase tracking-wide text-yellow-300">
               DISTANCE ADVISORY: MOVE CLOSER TO HOST ROUTER
             </div>
             <div className="text-[11px] font-body text-yellow-100/90 leading-tight">
@@ -501,7 +501,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
 
       {/* Digital Clipping & Distortion Alert */}
       {isAudioLive && isClipping && (
-        <div className="relative z-10 mb-3 p-3 bg-burgundy-deep border border-red-500/80 rounded-xl flex items-start gap-2.5 text-xs text-red-200 font-mono animate-bounce shadow-lg">
+        <div className="relative z-10 mb-3 p-3 bg-red-950/40 border border-red-500/80 rounded-xl flex items-start gap-2.5 text-xs text-red-200 font-mono animate-bounce shadow-lg">
           <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
           <div className="space-y-0.5">
             <div className="font-bold text-[11px] uppercase tracking-wide text-red-300">
@@ -515,7 +515,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
       )}
 
       {/* Main Channel & Call Sign Info */}
-      <div className="relative z-10 mb-3.5 p-3.5 bg-bg-card border border-border rounded-xl flex items-center justify-between shadow-md">
+      <div className="relative z-10 mb-3.5 p-3.5 bg-bg-card border border-border rounded-xl flex items-center justify-between shadow-card">
         <div>
           <div className="text-[10px] font-mono text-text-muted uppercase">ASSIGNED SLOT</div>
           <div className="font-mono text-xl font-bold tracking-wider text-text-primary">
@@ -527,7 +527,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
         </div>
 
         <div className="text-right flex flex-col items-end gap-1">
-          <div className="flex items-center gap-1 text-xs font-mono px-2 py-0.5 bg-burgundy-deep border border-gold/30 text-gold rounded-md">
+          <div className="flex items-center gap-1 text-xs font-mono px-2 py-0.5 bg-bg-secondary border border-border text-accent-blue rounded-md">
             <Shield size={12} />
             <span>{participant?.priority || 'Normal'}</span>
           </div>
@@ -539,8 +539,8 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
       <div className="flex flex-col gap-3">
         {!isAudioLive ? (
           /* START MICROPHONE CALL TO ACTION (Direct User Gesture) */
-          <div className="w-full p-6 sm:p-7 bg-bg-card border border-border rounded-2xl text-center flex flex-col items-center gap-4 shadow-xl shadow-black/40">
-            <div className="w-16 h-16 rounded-2xl bg-burgundy-deep border border-gold/40 text-gold flex items-center justify-center shadow-lg">
+          <div className="w-full p-6 sm:p-7 bg-bg-card border border-border rounded-2xl text-center flex flex-col items-center gap-4 shadow-card">
+            <div className="w-16 h-16 rounded-2xl bg-bg-secondary border border-border text-accent-blue flex items-center justify-center shadow-sm">
               <Mic size={28} />
             </div>
 
@@ -554,7 +554,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
             </div>
 
             {permissionError && (
-              <div className="w-full p-3 border border-red-500/50 bg-burgundy-deep text-xs font-mono text-red-300 rounded-xl flex items-start gap-2 text-left">
+              <div className="w-full p-3 border border-red-500/50 bg-red-950/40 text-xs font-mono text-red-300 rounded-xl flex items-start gap-2 text-left">
                 <AlertCircle size={14} className="shrink-0 mt-0.5 text-red-400" />
                 <div className="space-y-1">
                   <div className="font-bold text-[10px] uppercase">PERMISSION NOTICE</div>
@@ -566,7 +566,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
             <button
               onClick={() => handleEnableMicrophone()}
               disabled={isStartingMic}
-              className="w-full py-4 bg-gold text-bg-main font-heading font-bold tracking-wider uppercase text-sm rounded-xl hover:bg-gold-light shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98]"
+              className="w-full py-4 bg-accent-blue text-white font-heading font-semibold tracking-wider uppercase text-sm rounded-xl hover:bg-accent-blue-hover shadow-blue-glow flex items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-[0.98]"
             >
               <Mic size={18} />
               <span>{isStartingMic ? 'STARTING MIC...' : 'START MICROPHONE'}</span>
@@ -579,15 +579,15 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
             <div
               className={`w-full py-7 px-4 rounded-2xl border-2 text-center flex flex-col items-center justify-center transition-all ${
                 isLiveOnAir
-                  ? 'bg-burgundy-deep/90 border-gold text-text-primary shadow-xl shadow-gold/15'
+                  ? 'bg-bg-card border-accent-blue text-text-primary shadow-blue-glow ring-1 ring-accent-blue/30'
                   : isMutedState
-                  ? 'bg-burgundy-deep/60 border-yellow-500/50 text-yellow-200'
+                  ? 'bg-bg-card border-border text-yellow-200'
                   : 'bg-bg-card border-border text-text-primary'
               }`}
             >
               <div className="flex items-center gap-2 mb-1.5 font-mono text-xs uppercase tracking-widest">
-                <Radio size={14} className={isLiveOnAir ? 'text-gold animate-pulse' : ''} />
-                <span className={isLiveOnAir ? 'text-gold font-bold' : ''}>
+                <Radio size={14} className={isLiveOnAir ? 'text-accent-blue animate-pulse' : ''} />
+                <span className={isLiveOnAir ? 'text-accent-blue font-bold' : ''}>
                   {isLiveOnAir ? 'BROADCAST STATUS: LIVE' : isMutedState ? 'BROADCAST STATUS: MUTED' : 'BROADCAST STATUS: READY'}
                 </span>
               </div>
@@ -620,7 +620,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
             </div>
 
             {/* Live Volume Meter */}
-            <div className="w-full p-4 bg-bg-card border border-border rounded-xl space-y-2 shadow-md">
+            <div className="w-full p-4 bg-bg-card border border-border rounded-xl space-y-2 shadow-card">
               <RetroVUMeter
                 level={isMuted ? 0 : audioLevel}
                 segments={18}
@@ -648,10 +648,10 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
             {/* GIANT TOUCH-FRIENDLY MUTE / UNMUTE BUTTON (Minimum 64px height) */}
             <button
               onClick={handleToggleMute}
-              className={`w-full py-4 px-6 rounded-xl font-heading font-black tracking-wider uppercase text-base flex items-center justify-center gap-3 transition-all duration-150 active:scale-[0.98] shadow-lg ${
+              className={`w-full py-4 px-6 rounded-xl font-heading font-semibold tracking-wider uppercase text-base flex items-center justify-center gap-3 transition-all duration-150 active:scale-[0.98] shadow-card ${
                 isMuted
-                  ? 'bg-gold text-bg-main hover:bg-gold-light border-2 border-gold shadow-gold/20'
-                  : 'bg-burgundy-deep text-text-secondary hover:text-red-300 border-2 border-border hover:border-red-500/50'
+                  ? 'bg-accent-blue text-white hover:bg-accent-blue-hover border-2 border-accent-blue shadow-blue-glow'
+                  : 'bg-bg-secondary text-text-secondary hover:text-red-300 border-2 border-border hover:border-red-500/50'
               }`}
             >
               {isMuted ? (
@@ -671,13 +671,13 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
       </div>
 
       {/* OPTIONAL ACCORDION: Audio Settings & Hardware Test */}
-      <div className="relative z-10 mt-4 bg-bg-card border border-border rounded-xl overflow-hidden text-xs shadow-md">
+      <div className="relative z-10 mt-4 bg-bg-card border border-border rounded-xl overflow-hidden text-xs shadow-card">
         <button
           onClick={() => setShowSettings(!showSettings)}
-          className="w-full p-3.5 flex items-center justify-between text-text-secondary hover:text-gold font-bold uppercase tracking-wider font-mono bg-bg-secondary/60 transition-colors"
+          className="w-full p-3.5 flex items-center justify-between text-text-secondary hover:text-text-primary font-semibold uppercase tracking-wider font-mono bg-bg-secondary transition-colors"
         >
           <div className="flex items-center gap-2">
-            <Sliders size={14} className="text-gold" />
+            <Sliders size={14} className="text-accent-blue" />
             <span>AUDIO SETTINGS & HARDWARE TEST</span>
           </div>
           {showSettings ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -686,18 +686,18 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
         {showSettings && (
           <div className="p-4 border-t border-border space-y-4 font-mono">
             {/* ISOLATED LOCAL HARDWARE MIC TEST */}
-            <div className="p-3 bg-bg-main/80 border border-border rounded-lg space-y-2.5">
+            <div className="p-3 bg-bg-secondary border border-border rounded-lg space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 font-bold">
-                  <Activity size={13} className={isLocalTestRunning ? 'text-gold animate-pulse' : 'text-gold'} />
+                  <Activity size={13} className={isLocalTestRunning ? 'text-accent-blue animate-pulse' : 'text-accent-blue'} />
                   <span>LOCAL MIC TEST</span>
                 </div>
                 <button
                   onClick={handleToggleLocalTest}
-                  className={`px-3 py-1 text-[11px] font-mono font-bold uppercase rounded-lg flex items-center gap-1.5 transition-colors ${
+                  className={`px-3 py-1 text-[11px] font-mono font-semibold uppercase rounded-lg flex items-center gap-1.5 transition-colors ${
                     isLocalTestRunning
                       ? 'bg-red-500 text-white hover:bg-red-600'
-                      : 'bg-gold text-bg-main hover:bg-gold-light'
+                      : 'bg-accent-blue text-white hover:bg-accent-blue-hover'
                   }`}
                 >
                   {isLocalTestRunning ? <Square size={11} /> : <Play size={11} />}
@@ -721,8 +721,8 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
                   <div
                     className={`py-1.5 px-2 rounded border text-center font-mono text-xs font-bold uppercase transition-all ${
                       localTestData.isVoiceDetected
-                        ? 'bg-burgundy-deep border-gold text-gold animate-pulse'
-                        : 'bg-bg-main border-border text-text-muted'
+                        ? 'bg-bg-card border-accent-blue text-accent-blue animate-pulse'
+                        : 'bg-bg-card border-border text-text-muted'
                     }`}
                   >
                     {localTestData.isVoiceDetected
@@ -746,10 +746,10 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
 
             {/* Mic Sensitivity / Gain Slider */}
             {isAudioLive && (
-              <div className="p-3 bg-bg-main/80 border border-border rounded-lg space-y-2">
+              <div className="p-3 bg-bg-secondary border border-border rounded-lg space-y-2">
                 <div className="flex items-center justify-between text-text-secondary text-[11px]">
                   <span>MICROPHONE GAIN / SENSITIVITY:</span>
-                  <span className="text-gold font-bold">{Math.round(sensitivity * 100)}%</span>
+                  <span className="text-accent-blue font-bold">{Math.round(sensitivity * 100)}%</span>
                 </div>
                 <input
                   type="range"
@@ -758,14 +758,14 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
                   step={0.1}
                   value={sensitivity}
                   onChange={(e) => handleSensitivityChange(Number(e.target.value))}
-                  className="w-full accent-[#D6B36A] bg-burgundy-deep h-1.5 rounded-lg cursor-pointer"
+                  className="w-full accent-[#3478F6] bg-bg-card h-1.5 rounded-lg cursor-pointer"
                 />
               </div>
             )}
 
             {/* Voice Profile Switch */}
             {isAudioLive && (
-              <div className="p-3 bg-bg-main/80 border border-border rounded-lg flex items-center justify-between">
+              <div className="p-3 bg-bg-secondary border border-border rounded-lg flex items-center justify-between">
                 <div>
                   <div className="text-[11px] font-bold text-text-primary uppercase">
                     {vocalProfile === 'stage' ? 'STAGE PA VOCAL MODE' : 'CONFERENCE CALL MODE'}
@@ -782,7 +782,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
                       await audioEngineRef.current.switchProfile(nextMode);
                     }
                   }}
-                  className="px-2.5 py-1 bg-burgundy-deep border border-border text-[10px] hover:border-gold/50 text-text-primary uppercase rounded-lg transition-colors"
+                  className="px-2.5 py-1 bg-bg-card border border-border text-[10px] hover:border-border-hover text-text-primary uppercase rounded-lg transition-colors"
                 >
                   SWITCH
                 </button>
@@ -791,10 +791,10 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
 
             {/* Professional Audio DSP Toggles */}
             {isAudioLive && (
-              <div className="p-3 bg-bg-main/80 border border-border rounded-lg space-y-2.5">
+              <div className="p-3 bg-bg-secondary border border-border rounded-lg space-y-2.5">
                 <div className="text-[11px] font-bold text-text-primary uppercase flex items-center justify-between">
                   <span>AUDIO DSP FILTERS</span>
-                  <span className="text-[9px] text-gold font-bold">LIVE TUNING</span>
+                  <span className="text-[9px] text-accent-blue font-bold">LIVE TUNING</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[10px]">
                   <button
@@ -804,7 +804,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
                       if (audioEngineRef.current) await audioEngineRef.current.updateAudioSettings({ highpassFilter: next });
                     }}
                     className={`p-2 rounded-lg border text-left transition-all ${
-                      audioSettings.highpassFilter ? 'bg-gold text-bg-main border-gold font-bold shadow-sm' : 'bg-burgundy-deep border-border text-text-secondary hover:border-gold/30'
+                      audioSettings.highpassFilter ? 'bg-accent-blue text-white border-accent-blue font-bold shadow-sm' : 'bg-bg-card border-border text-text-secondary hover:border-border-hover'
                     }`}
                   >
                     <div>80Hz RUMBLE CUT</div>
@@ -818,7 +818,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
                       if (audioEngineRef.current) await audioEngineRef.current.updateAudioSettings({ autoGainControl: next });
                     }}
                     className={`p-2 rounded-lg border text-left transition-all ${
-                      audioSettings.autoGainControl ? 'bg-gold text-bg-main border-gold font-bold shadow-sm' : 'bg-burgundy-deep border-border text-text-secondary hover:border-gold/30'
+                      audioSettings.autoGainControl ? 'bg-accent-blue text-white border-accent-blue font-bold shadow-sm' : 'bg-bg-card border-border text-text-secondary hover:border-border-hover'
                     }`}
                   >
                     <div>AUTO GAIN (AGC)</div>
@@ -832,7 +832,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
                       if (audioEngineRef.current) await audioEngineRef.current.updateAudioSettings({ noiseSuppression: next });
                     }}
                     className={`p-2 rounded-lg border text-left transition-all ${
-                      audioSettings.noiseSuppression ? 'bg-gold text-bg-main border-gold font-bold shadow-sm' : 'bg-burgundy-deep border-border text-text-secondary hover:border-gold/30'
+                      audioSettings.noiseSuppression ? 'bg-accent-blue text-white border-accent-blue font-bold shadow-sm' : 'bg-bg-card border-border text-text-secondary hover:border-border-hover'
                     }`}
                   >
                     <div>NOISE SUPPRESSION</div>
@@ -846,7 +846,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
                       if (audioEngineRef.current) await audioEngineRef.current.updateAudioSettings({ echoCancellation: next });
                     }}
                     className={`p-2 rounded-lg border text-left transition-all ${
-                      audioSettings.echoCancellation ? 'bg-gold text-bg-main border-gold font-bold shadow-sm' : 'bg-burgundy-deep border-border text-text-secondary hover:border-gold/30'
+                      audioSettings.echoCancellation ? 'bg-accent-blue text-white border-accent-blue font-bold shadow-sm' : 'bg-bg-card border-border text-text-secondary hover:border-border-hover'
                     }`}
                   >
                     <div>ECHO CANCEL (AEC)</div>
@@ -860,21 +860,21 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
             <div className="pt-2 border-t border-border/50">
               <button
                 onClick={() => setShowDiagnostics(!showDiagnostics)}
-                className="text-[10px] text-text-muted hover:text-gold flex items-center justify-between w-full uppercase transition-colors"
+                className="text-[10px] text-text-muted hover:text-text-primary flex items-center justify-between w-full uppercase transition-colors"
               >
                 <span>Technical Network Stats</span>
                 {showDiagnostics ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               </button>
 
               {showDiagnostics && (
-                <div className="mt-2 space-y-1.5 text-[10px] text-text-secondary bg-bg-main/90 p-3 border border-border rounded-lg">
+                <div className="mt-2 space-y-1.5 text-[10px] text-text-secondary bg-bg-secondary p-3 border border-border rounded-lg">
                   <div className="flex justify-between">
                     <span>WI-FI RF RTT:</span>
-                    <span className="font-bold text-gold">{netStats && netStats.rttMs > 0 ? `${netStats.rttMs} ms` : 'SYNCED'}</span>
+                    <span className="font-bold text-accent-blue">{netStats && netStats.rttMs > 0 ? `${netStats.rttMs} ms` : 'SYNCED'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>BITRATE:</span>
-                    <span className="font-bold text-gold">{netStats?.bitrateKbps || 0} kbps</span>
+                    <span className="font-bold text-accent-blue">{netStats?.bitrateKbps || 0} kbps</span>
                   </div>
                   <div className="flex justify-between">
                     <span>AUDIO CONTEXT:</span>
@@ -882,7 +882,7 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
                   </div>
                   <button
                     onClick={() => handleEnableMicrophone()}
-                    className="w-full mt-2 py-1.5 bg-burgundy-deep border border-border text-[10px] font-bold uppercase rounded-lg hover:border-gold/50 text-text-primary flex items-center justify-center gap-1 transition-colors"
+                    className="w-full mt-2 py-1.5 bg-bg-card border border-border text-[10px] font-bold uppercase rounded-lg hover:border-border-hover text-text-primary flex items-center justify-center gap-1 transition-colors"
                   >
                     <RefreshCw size={10} />
                     <span>RESTART AUDIO CAPTURE</span>

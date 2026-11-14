@@ -18,10 +18,10 @@ export const AutoModeConfigPanel: React.FC<AutoModeConfigPanelProps> = ({
   onToggleMode
 }) => {
   return (
-    <div className="bg-bg-card border border-border p-5 rounded-2xl flex flex-col gap-4 font-body shadow-xl shadow-black/40">
+    <div className="bg-bg-card border border-border p-5 rounded-2xl flex flex-col gap-4 font-body shadow-card">
       <div className="flex items-center justify-between pb-3 border-b border-border">
         <div className="flex items-center gap-2.5">
-          <Cpu size={18} className="text-gold" />
+          <Cpu size={18} className="text-accent-blue" />
           <h3 className="font-heading font-semibold text-sm tracking-wider uppercase text-text-primary">
             AUTO MODE // ARBITRATION ENGINE
           </h3>
@@ -30,14 +30,14 @@ export const AutoModeConfigPanel: React.FC<AutoModeConfigPanelProps> = ({
         {/* Mode Switcher Toggle */}
         <div className="flex items-center gap-2.5">
           <span className="font-mono text-xs text-text-secondary uppercase">
-            MODE: <strong className={mode === 'auto' ? 'text-gold' : 'text-text-primary'}>{mode}</strong>
+            MODE: <strong className={mode === 'auto' ? 'text-accent-blue' : 'text-text-primary'}>{mode}</strong>
           </span>
           <button
             onClick={() => onToggleMode(mode === 'auto' ? 'manual' : 'auto')}
-            className={`px-3.5 py-1.5 text-xs font-mono font-bold tracking-wider uppercase border rounded-lg btn-tactile transition-all shadow-sm ${
+            className={`px-3.5 py-1.5 text-xs font-mono font-semibold tracking-wider uppercase border rounded-lg btn-tactile transition-all shadow-sm ${
               mode === 'auto'
-                ? 'bg-gold text-bg-main border-gold hover:bg-gold-light'
-                : 'bg-burgundy-deep text-text-primary border-border hover:border-gold/50 hover:text-gold'
+                ? 'bg-accent-blue text-white border-accent-blue hover:bg-accent-blue-hover shadow-blue-glow'
+                : 'bg-bg-secondary text-text-primary border-border hover:border-border-hover hover:text-white'
             }`}
           >
             {mode === 'auto' ? 'AUTO ARBITRATION ON' : 'SWITCH TO AUTO'}
@@ -46,10 +46,10 @@ export const AutoModeConfigPanel: React.FC<AutoModeConfigPanelProps> = ({
       </div>
 
       {/* Active Decision Banner */}
-      <div className="p-3.5 bg-burgundy-deep/70 border border-gold/30 rounded-xl flex items-center justify-between text-xs font-mono shadow-sm">
+      <div className="p-3.5 bg-bg-secondary border border-border rounded-xl flex items-center justify-between text-xs font-mono shadow-sm">
         <div>
           <span className="text-text-muted uppercase text-[10px] block font-semibold">CURRENT ARBITRATION REASON</span>
-          <span className="font-bold text-gold text-sm tracking-wider">
+          <span className="font-bold text-accent-blue text-sm tracking-wider">
             {selectionReason}
           </span>
         </div>
@@ -67,10 +67,10 @@ export const AutoModeConfigPanel: React.FC<AutoModeConfigPanelProps> = ({
       {/* Sliders for Timing & Sensitivity */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
         {/* Silence Timeout */}
-        <div className="p-3.5 bg-bg-main/80 border border-border rounded-xl flex flex-col gap-2">
+        <div className="p-3.5 bg-bg-secondary border border-border rounded-xl flex flex-col gap-2">
           <div className="flex justify-between items-center">
             <span className="text-text-primary font-semibold">SILENCE TIMEOUT</span>
-            <span className="text-gold font-bold">{config.silenceTimeoutMs} ms</span>
+            <span className="text-accent-blue font-bold">{config.silenceTimeoutMs} ms</span>
           </div>
           <input
             type="range"
@@ -79,7 +79,7 @@ export const AutoModeConfigPanel: React.FC<AutoModeConfigPanelProps> = ({
             step={100}
             value={config.silenceTimeoutMs}
             onChange={(e) => onUpdateConfig({ silenceTimeoutMs: Number(e.target.value) })}
-            className="w-full accent-[#D6B36A] bg-burgundy-deep h-1.5 rounded-lg cursor-pointer"
+            className="w-full accent-[#3478F6] bg-bg-card h-1.5 rounded-lg cursor-pointer"
           />
           <span className="text-[10px] text-text-muted">
             Duration of silence before releasing the floor to contenders or idle.
@@ -87,10 +87,10 @@ export const AutoModeConfigPanel: React.FC<AutoModeConfigPanelProps> = ({
         </div>
 
         {/* Speaker Lock Duration */}
-        <div className="p-3.5 bg-bg-main/80 border border-border rounded-xl flex flex-col gap-2">
+        <div className="p-3.5 bg-bg-secondary border border-border rounded-xl flex flex-col gap-2">
           <div className="flex justify-between items-center">
             <span className="text-text-primary font-semibold">SPEAKER FLOOR LOCK</span>
-            <span className="text-gold font-bold">{config.speakerLockMs} ms</span>
+            <span className="text-accent-blue font-bold">{config.speakerLockMs} ms</span>
           </div>
           <input
             type="range"
@@ -99,7 +99,7 @@ export const AutoModeConfigPanel: React.FC<AutoModeConfigPanelProps> = ({
             step={100}
             value={config.speakerLockMs}
             onChange={(e) => onUpdateConfig({ speakerLockMs: Number(e.target.value) })}
-            className="w-full accent-[#D6B36A] bg-burgundy-deep h-1.5 rounded-lg cursor-pointer"
+            className="w-full accent-[#3478F6] bg-bg-card h-1.5 rounded-lg cursor-pointer"
           />
           <span className="text-[10px] text-text-muted">
             Guaranteed floor time preventing immediate preemption on short pauses.
@@ -107,10 +107,10 @@ export const AutoModeConfigPanel: React.FC<AutoModeConfigPanelProps> = ({
         </div>
 
         {/* Cooldown Timer */}
-        <div className="p-3.5 bg-bg-main/80 border border-border rounded-xl flex flex-col gap-2">
+        <div className="p-3.5 bg-bg-secondary border border-border rounded-xl flex flex-col gap-2">
           <div className="flex justify-between items-center">
             <span className="text-text-primary font-semibold">SWITCH COOLDOWN</span>
-            <span className="text-gold font-bold">{config.switchCooldownMs} ms</span>
+            <span className="text-accent-blue font-bold">{config.switchCooldownMs} ms</span>
           </div>
           <input
             type="range"
@@ -119,7 +119,7 @@ export const AutoModeConfigPanel: React.FC<AutoModeConfigPanelProps> = ({
             step={100}
             value={config.switchCooldownMs}
             onChange={(e) => onUpdateConfig({ switchCooldownMs: Number(e.target.value) })}
-            className="w-full accent-[#D6B36A] bg-burgundy-deep h-1.5 rounded-lg cursor-pointer"
+            className="w-full accent-[#3478F6] bg-bg-card h-1.5 rounded-lg cursor-pointer"
           />
           <span className="text-[10px] text-text-muted">
             Minimum pause between consecutive switches to prevent acoustic ping-pong.
@@ -127,10 +127,10 @@ export const AutoModeConfigPanel: React.FC<AutoModeConfigPanelProps> = ({
         </div>
 
         {/* VAD Sensitivity */}
-        <div className="p-3.5 bg-bg-main/80 border border-border rounded-xl flex flex-col gap-2">
+        <div className="p-3.5 bg-bg-secondary border border-border rounded-xl flex flex-col gap-2">
           <div className="flex justify-between items-center">
             <span className="text-text-primary font-semibold">VAD ENERGY THRESHOLD</span>
-            <span className="text-gold font-bold">{config.vadThreshold} % RMS</span>
+            <span className="text-accent-blue font-bold">{config.vadThreshold} % RMS</span>
           </div>
           <input
             type="range"
@@ -139,7 +139,7 @@ export const AutoModeConfigPanel: React.FC<AutoModeConfigPanelProps> = ({
             step={1}
             value={config.vadThreshold}
             onChange={(e) => onUpdateConfig({ vadThreshold: Number(e.target.value) })}
-            className="w-full accent-[#D6B36A] bg-burgundy-deep h-1.5 rounded-lg cursor-pointer"
+            className="w-full accent-[#3478F6] bg-bg-card h-1.5 rounded-lg cursor-pointer"
           />
           <span className="text-[10px] text-text-muted">
             Microphone energy level required to register speech activity over room ambience.
@@ -148,13 +148,13 @@ export const AutoModeConfigPanel: React.FC<AutoModeConfigPanelProps> = ({
       </div>
 
       {/* Engineering notes on acoustic limitations */}
-      <div className="p-3.5 bg-burgundy-deep/30 border border-border rounded-xl text-xs text-text-secondary space-y-1">
-        <div className="flex items-center gap-1.5 font-mono text-[10px] text-gold uppercase tracking-widest font-bold">
+      <div className="p-3.5 bg-bg-secondary border border-border rounded-xl text-xs text-text-secondary space-y-1">
+        <div className="flex items-center gap-1.5 font-mono text-[10px] text-accent-blue uppercase tracking-widest font-bold">
           <HelpCircle size={12} />
           <span>ACOUSTIC ROOM COUPLING LIMITATION</span>
         </div>
         <p className="text-[11px] leading-relaxed">
-          Standard VAD measures acoustic sound energy at the handset microphone. In loud event halls with high PA loudspeaker spill, multiple handsets can pick up the hall reverberation. For stage panels, assign the moderator as <strong className="text-gold">VIP priority</strong> or toggle to <strong className="text-gold">MANUAL MODE</strong> for deterministic broadcast control.
+          Standard VAD measures acoustic sound energy at the handset microphone. In loud event halls with high PA loudspeaker spill, multiple handsets can pick up the hall reverberation. For stage panels, assign the moderator as <strong className="text-accent-blue">VIP priority</strong> or toggle to <strong className="text-accent-blue">MANUAL MODE</strong> for deterministic broadcast control.
         </p>
       </div>
     </div>

@@ -42,8 +42,8 @@ export const MicCard: React.FC<MicCardProps> = ({
     <div
       className={`relative flex flex-col p-3.5 transition-all border rounded-xl ${
         isSelected
-          ? 'bg-burgundy-deep/90 text-text-primary border-gold shadow-lg shadow-gold/10 ring-1 ring-gold/40'
-          : 'bg-bg-card text-text-primary border-border hover:border-gold/40'
+          ? 'bg-bg-card text-text-primary border-accent-blue shadow-lg shadow-accent-blue/15 ring-1 ring-accent-blue/40'
+          : 'bg-bg-card text-text-primary border-border hover:border-border-hover'
       }`}
     >
       {/* Card Header: Channel & State */}
@@ -51,14 +51,14 @@ export const MicCard: React.FC<MicCardProps> = ({
         <div className="flex items-center gap-2">
           <span className={`font-mono text-xs font-bold tracking-wider px-2 py-0.5 rounded border ${
             isSelected 
-              ? 'bg-gold text-bg-main border-gold shadow-sm' 
-              : 'bg-bg-main text-text-primary border-border'
+              ? 'bg-accent-blue text-white border-accent-blue shadow-sm' 
+              : 'bg-bg-secondary text-text-primary border-border'
           }`}>
             {micLabel}
           </span>
           {isQuickSlot && (
             <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
-              isSelected ? 'border-gold/50 text-gold' : 'border-border text-text-muted'
+              isSelected ? 'border-accent-blue/50 text-accent-blue' : 'border-border text-text-muted'
             }`}>
               BUS
             </span>
@@ -70,16 +70,16 @@ export const MicCard: React.FC<MicCardProps> = ({
           <div
             className={`w-2 h-2 rounded-full ${
               participant.state === 'ACTIVE SPEAKER'
-                ? 'bg-gold animate-ping shadow-[0_0_8px_rgba(214,179,106,0.8)]'
+                ? 'bg-accent-blue animate-ping shadow-[0_0_8px_rgba(52,120,246,0.8)]'
                 : participant.state === 'MUTED'
                 ? 'bg-text-muted'
                 : participant.state === 'READY'
-                ? 'bg-gold/80'
+                ? 'bg-emerald-400'
                 : 'border border-text-muted bg-transparent'
             }`}
           />
           <span className={`text-[10px] font-mono uppercase tracking-wider font-semibold ${
-            isSelected ? 'text-gold' : 'text-text-secondary'
+            isSelected ? 'text-accent-blue' : 'text-text-secondary'
           }`}>
             {participant.state}
           </span>
@@ -90,10 +90,10 @@ export const MicCard: React.FC<MicCardProps> = ({
       <div className="flex items-baseline justify-between mb-2.5">
         <div className="truncate max-w-[140px]">
           <h4 className="font-heading font-semibold text-sm truncate flex items-center gap-1.5 text-text-primary">
-            <User size={13} className={isSelected ? 'text-gold' : 'text-text-muted'} />
+            <User size={13} className={isSelected ? 'text-accent-blue' : 'text-text-muted'} />
             {participant.name}
           </h4>
-          <span className={`text-[10px] font-mono ${isSelected ? 'text-gold/80' : 'text-text-muted'}`}>
+          <span className={`text-[10px] font-mono ${isSelected ? 'text-accent-blue/80' : 'text-text-muted'}`}>
             ID: {participant.id.substring(0, 6)}
           </span>
         </div>
@@ -104,8 +104,8 @@ export const MicCard: React.FC<MicCardProps> = ({
           title="Click to cycle priority: VIP -> Normal -> Low"
           className={`flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded border transition-colors ${
             isSelected
-              ? 'border-gold/60 bg-gold/15 text-gold hover:bg-gold hover:text-bg-main'
-              : 'border-border bg-bg-main text-text-secondary hover:text-gold hover:border-gold/50'
+              ? 'border-accent-blue/60 bg-accent-blue/15 text-accent-blue hover:bg-accent-blue hover:text-white'
+              : 'border-border bg-bg-secondary text-text-secondary hover:text-text-primary hover:border-border-hover'
           }`}
         >
           <Shield size={10} />
@@ -127,17 +127,17 @@ export const MicCard: React.FC<MicCardProps> = ({
       {/* RF & Wi-Fi Link Quality & Clipping Alert */}
       <div className={`flex items-center justify-between text-[10px] font-mono px-2 py-1 rounded border mt-1 ${
         stats?.isClipping
-          ? 'border-red-500/70 bg-burgundy-glow/60 text-red-300 font-bold animate-pulse'
+          ? 'border-red-500/70 bg-red-950/40 text-red-300 font-bold animate-pulse'
           : isSelected 
-          ? 'border-gold/30 bg-burgundy-subtle text-gold/90' 
-          : 'border-border/60 bg-bg-main text-text-secondary'
+          ? 'border-accent-blue/30 bg-bg-secondary text-text-secondary' 
+          : 'border-border/60 bg-bg-secondary text-text-secondary'
       }`}>
         <div className="flex items-center gap-1">
           {stats?.isClipping ? (
             <span className="text-red-400 font-bold">⚠️ CLIPPING</span>
           ) : (
             <>
-              <Wifi size={10} className={stats && stats.packetLossPct > 5 ? 'animate-pulse text-red-400' : 'text-gold/70'} />
+              <Wifi size={10} className={stats && stats.packetLossPct > 5 ? 'animate-pulse text-red-400' : 'text-accent-blue/70'} />
               <span>{stats && stats.rttMs > 0 ? `${stats.rttMs}ms` : 'LINK OK'}</span>
             </>
           )}
@@ -155,20 +155,20 @@ export const MicCard: React.FC<MicCardProps> = ({
       {/* Pre-Amp Channel Gain Trim */}
       {onTrimChange && (
         <div className={`flex items-center justify-between text-[10px] font-mono mt-1.5 px-2 py-0.5 rounded border ${
-          isSelected ? 'border-gold/20 text-gold/90' : 'border-border/60 text-text-secondary'
+          isSelected ? 'border-accent-blue/20 text-text-secondary' : 'border-border/60 text-text-secondary'
         }`}>
           <span>TRIM: {trimMultiplier.toFixed(1)}x ({trimMultiplier >= 1 ? '+' : ''}{Math.round(20 * Math.log10(trimMultiplier))}dB)</span>
           <div className="flex items-center gap-1">
             <button
               onClick={() => onTrimChange(Math.max(0.5, Number((trimMultiplier - 0.25).toFixed(2))))}
-              className={`px-1.5 font-bold border rounded ${isSelected ? 'border-gold/40 hover:bg-gold hover:text-bg-main' : 'border-border hover:border-gold hover:text-gold'}`}
+              className={`px-1.5 font-bold border rounded ${isSelected ? 'border-accent-blue/40 hover:bg-accent-blue hover:text-white' : 'border-border hover:border-border-hover hover:text-text-primary'}`}
               title="Decrease channel trim (-2dB)"
             >
               -
             </button>
             <button
               onClick={() => onTrimChange(Math.min(3.5, Number((trimMultiplier + 0.25).toFixed(2))))}
-              className={`px-1.5 font-bold border rounded ${isSelected ? 'border-gold/40 hover:bg-gold hover:text-bg-main' : 'border-border hover:border-gold hover:text-gold'}`}
+              className={`px-1.5 font-bold border rounded ${isSelected ? 'border-accent-blue/40 hover:bg-accent-blue hover:text-white' : 'border-border hover:border-border-hover hover:text-text-primary'}`}
               title="Increase channel trim (+2dB)"
             >
               +
@@ -184,8 +184,8 @@ export const MicCard: React.FC<MicCardProps> = ({
           onClick={onSelect}
           className={`col-span-2 py-1.5 px-2 text-xs font-mono font-bold tracking-wider uppercase rounded-lg border btn-tactile flex items-center justify-center gap-1.5 shadow-sm ${
             isSelected
-              ? 'bg-gold text-bg-main border-gold hover:bg-gold-light'
-              : 'bg-burgundy-deep text-text-primary border-border hover:border-gold/60 hover:text-gold'
+              ? 'bg-accent-blue text-white border-accent-blue hover:bg-accent-blue-hover'
+              : 'bg-bg-secondary text-text-primary border-border hover:border-border-hover hover:text-white'
           }`}
         >
           <Radio size={12} className={isSelected ? 'animate-pulse' : ''} />
@@ -198,10 +198,10 @@ export const MicCard: React.FC<MicCardProps> = ({
           title={isMuted ? 'Unmute participant' : 'Mute participant'}
           className={`py-1.5 px-1.5 text-xs rounded-lg border btn-tactile flex items-center justify-center transition-colors ${
             isMuted
-              ? 'bg-burgundy-glow text-red-300 border-red-500/40 shadow-sm'
+              ? 'bg-red-950/50 text-red-300 border-red-500/50 shadow-sm'
               : isSelected
-              ? 'border-gold/50 bg-burgundy-deep text-gold hover:bg-gold hover:text-bg-main'
-              : 'border-border bg-bg-main text-text-secondary hover:text-gold hover:border-gold/50'
+              ? 'border-accent-blue/50 bg-bg-secondary text-accent-blue hover:bg-accent-blue hover:text-white'
+              : 'border-border bg-bg-secondary text-text-secondary hover:text-text-primary hover:border-border-hover'
           }`}
         >
           {isMuted ? <MicOff size={13} /> : <Mic size={13} />}
