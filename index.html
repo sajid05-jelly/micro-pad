@@ -6,6 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>MICRO MAX // Wireless Microphone & PA System</title>
     <meta name="description" content="MICRO MAX turns smartphones into ultra-low-latency wireless microphones for events, conferences, classrooms, and PA sound systems." />
+    <!-- Suppress Netlify HUD / Powered-by watermark -->
+    <style>
+      #nl-badge-frame,
+      #nl-hud-frame,
+      iframe[title*="Netlify"],
+      iframe[title*="Powered by Netlify"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        position: absolute !important;
+        top: -9999px !important;
+        left: -9999px !important;
+      }
+    </style>
+    <script>
+      try {
+        localStorage.setItem("nl-hud:public:v1", "hidden");
+        localStorage.setItem("nl-hud:owner-private:v1", "hidden");
+      } catch (e) {}
+    </script>
     <!-- Monochrome fonts (non-blocking for fast mobile loading on hotspots) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,6 +38,9 @@
     </noscript>
   </head>
   <body class="bg-bg-main text-text-primary font-body antialiased selection:bg-text-primary selection:text-text-inverse overflow-x-hidden">
+    <!-- Guard to block Netlify HUD / Powered-by badge from mounting -->
+    <div id="nl-badge-frame" style="display:none!important;" aria-hidden="true"></div>
+    <div id="nl-hud-frame" style="display:none!important;" aria-hidden="true"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
