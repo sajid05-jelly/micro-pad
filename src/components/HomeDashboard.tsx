@@ -29,52 +29,21 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 }) => {
   return (
     <div className="min-h-screen bg-transparent text-text-primary flex flex-col font-body relative">
-
-      {/* Top Bar with Minimalist Brand & Status */}
-      <header className="relative z-10 px-4 sm:px-8 py-3.5 flex items-center justify-between liquid-glass-subtle rounded-b-2xl mx-2 sm:mx-6 mt-2 border-b border-border/80">
-        <div className="flex items-center gap-3">
-          {/* Audio Brand Mark */}
-          <div className="w-8 h-8 rounded-lg liquid-glass-subtle text-accent-blue flex items-center justify-center shadow-sm">
-            <Radio size={16} />
+      {/* Offline Alert Banner (Only shown if offline/error) */}
+      {connectionStatus !== 'CONNECTED' && connectionStatus !== 'CONNECTING' && (
+        <div className="relative z-20 max-w-md mx-auto mt-4 px-4 py-2 liquid-glass-subtle border-red-500/40 text-red-300 rounded-full text-xs font-mono flex items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-2">
+            <WifiOff size={13} className="text-red-400" />
+            <span>CONSOLE OFFLINE</span>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="font-heading font-black text-lg sm:text-xl tracking-widest uppercase text-text-primary">
-              MICRO MAX
-            </span>
-            <span className="hidden sm:inline-block text-[10px] font-mono uppercase px-1.5 py-0.5 border border-border text-text-muted rounded">
-              v2.0
-            </span>
-          </div>
+          <button
+            onClick={onRetryConnection}
+            className="px-2.5 py-0.5 bg-accent-blue text-white font-bold text-[10px] uppercase rounded hover:bg-accent-blue-hover transition-colors"
+          >
+            RETRY
+          </button>
         </div>
-
-        {/* Backend Connectivity Status */}
-        <div className="flex items-center gap-2 font-mono text-xs">
-          {connectionStatus === 'CONNECTED' ? (
-            <div className="flex items-center gap-2 px-3 py-1 liquid-glass-subtle text-text-primary rounded-full text-[11px] font-medium shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-accent-blue animate-pulse" />
-              <span>SERVER READY</span>
-            </div>
-          ) : connectionStatus === 'CONNECTING' ? (
-            <div className="flex items-center gap-1.5 px-3 py-1 liquid-glass-subtle text-text-secondary rounded-full text-[11px]">
-              <RefreshCw size={11} className="animate-spin text-accent-blue" />
-              <span>CONNECTING...</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-3 py-1 liquid-glass-subtle border-red-500/40 text-red-300 rounded-full text-[11px]">
-                <WifiOff size={11} />
-                <span>OFFLINE</span>
-              </div>
-              <button
-                onClick={onRetryConnection}
-                className="px-2.5 py-1 bg-accent-blue text-white font-bold text-[10px] uppercase rounded hover:bg-accent-blue-hover transition-colors"
-              >
-                RETRY
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
+      )}
 
       {/* Main Hero & Action Cards */}
       <main className="relative z-10 flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 py-10 sm:py-16 flex flex-col justify-center">
