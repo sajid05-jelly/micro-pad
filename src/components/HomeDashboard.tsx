@@ -176,19 +176,19 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         {/* MAIN CASSETTE WINDOW (Top Section) */}
-        <div className="bg-[#03050a] rounded-3xl p-6 md:p-8 border border-white/5 shadow-[inset_0_10px_40px_rgba(0,0,0,0.8)] relative flex flex-col md:flex-row gap-10 items-center justify-between mb-8">
+        <div className="bg-[#03050a] rounded-3xl border border-white/5 shadow-[inset_0_10px_40px_rgba(0,0,0,0.8)] relative flex flex-col md:flex-row mb-8 overflow-hidden">
           
-          {/* Center Straight Divider Line (Replaces unwanted center box) */}
-          <div className="hidden md:block absolute left-1/2 top-8 bottom-8 -translate-x-1/2 w-px bg-gradient-to-b from-transparent via-sky-400/30 to-transparent pointer-events-none z-0"></div>
+          {/* Full-Height Complete Center Divider Line */}
+          <div className="hidden md:block absolute left-1/2 top-0 bottom-0 -translate-x-1/2 w-[1px] bg-white/10 pointer-events-none z-20"></div>
 
-          {/* LEFT REEL (Start a Session) */}
-          <div className="flex-1 w-full relative z-10 flex flex-col items-center text-center">
+          {/* LEFT REEL COMPARTMENT (Start a Session) */}
+          <div className="flex-1 w-full relative z-10 flex flex-col items-center text-center p-6 md:p-10 border-b md:border-b-0 md:border-r border-white/10 transition-all duration-300 hover:bg-white/[0.02] hover:shadow-[inset_0_0_35px_rgba(255,255,255,0.06),0_0_30px_rgba(255,255,255,0.1)] group cursor-default">
             
             {/* Interactive Spinning Tape Reel */}
             <div
               id="reel-left"
               ref={leftReelRef}
-              className="w-40 h-40 md:w-48 md:h-48 rounded-full border-[6px] border-[#1e293b] bg-[#0a1122] flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.8),inset_0_5px_15px_rgba(0,0,0,0.6)] relative mb-6 cursor-grab active:cursor-grabbing touch-none select-none"
+              className="w-40 h-40 md:w-48 md:h-48 rounded-full border-[6px] border-[#1e293b] bg-[#0a1122] flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.8),inset_0_5px_15px_rgba(0,0,0,0.6)] relative mb-6 cursor-grab active:cursor-grabbing touch-none select-none group-hover:border-white/30 group-hover:shadow-[0_0_35px_rgba(255,255,255,0.15)] transition-all duration-300"
             >
               {/* Rotating Wrapper */}
               <div className="reel-element absolute inset-0 w-full h-full pointer-events-none rounded-full flex items-center justify-center">
@@ -205,28 +205,28 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
             {/* Text Content */}
             <div className="mb-6">
-              <span className="text-sky-400 text-[10px] md:text-xs font-bold tracking-widest uppercase block mb-2">For Event Hosts & Stage</span>
+              <span className="text-slate-300 text-[10px] md:text-xs font-bold tracking-widest uppercase block mb-2">For Event Hosts & Stage</span>
               <h3 className="text-white text-xl md:text-2xl font-semibold mb-2">Start a Session</h3>
               <p className="text-slate-400 text-xs md:text-sm max-w-[250px] mx-auto">Host a live event from this device. Connect this laptop to your PA speaker.</p>
             </div>
 
-            {/* Action Button */}
+            {/* Black and White Action Button */}
             <button
               onClick={onStartSession}
-              className="bg-sky-500/80 hover:bg-sky-400 backdrop-blur-md text-white px-6 md:px-8 py-3 rounded-xl text-sm md:text-base font-semibold transition-all shadow-[0_0_20px_rgba(14,165,233,0.2)] border border-sky-400/30 w-full max-w-[220px]"
+              className="bg-white text-black hover:bg-slate-200 font-bold px-6 md:px-8 py-3 rounded-xl text-sm md:text-base transition-all border border-white shadow-[0_0_20px_rgba(255,255,255,0.25)] hover:shadow-[0_0_35px_rgba(255,255,255,0.5)] w-full max-w-[220px] active:scale-[0.98]"
             >
               START SESSION &rarr;
             </button>
           </div>
 
-          {/* RIGHT REEL (Join as Microphone) */}
-          <div className="flex-1 w-full relative z-10 flex flex-col items-center text-center mt-8 md:mt-0">
+          {/* RIGHT REEL COMPARTMENT (Join as Microphone) */}
+          <div className="flex-1 w-full relative z-10 flex flex-col items-center text-center p-6 md:p-10 transition-all duration-300 hover:bg-white/[0.02] hover:shadow-[inset_0_0_35px_rgba(255,255,255,0.06),0_0_30px_rgba(255,255,255,0.1)] group cursor-default">
             
             {/* Interactive Spinning Tape Reel */}
             <div
               id="reel-right"
               ref={rightReelRef}
-              className="w-40 h-40 md:w-48 md:h-48 rounded-full border-[6px] border-[#1e293b] bg-[#0a1122] flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.8),inset_0_5px_15px_rgba(0,0,0,0.6)] relative mb-6 cursor-grab active:cursor-grabbing touch-none select-none"
+              className="w-40 h-40 md:w-48 md:h-48 rounded-full border-[6px] border-[#1e293b] bg-[#0a1122] flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.8),inset_0_5px_15px_rgba(0,0,0,0.6)] relative mb-6 cursor-grab active:cursor-grabbing touch-none select-none group-hover:border-white/30 group-hover:shadow-[0_0_35px_rgba(255,255,255,0.15)] transition-all duration-300"
             >
               {/* Rotating Wrapper */}
               <div className="reel-element absolute inset-0 w-full h-full pointer-events-none rounded-full flex items-center justify-center">
@@ -248,10 +248,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               <p className="text-slate-400 text-xs md:text-sm max-w-[250px] mx-auto">Speak directly into your phone and be heard clearly through the main PA speaker.</p>
             </div>
 
-            {/* Action Button */}
+            {/* Black and White Action Button */}
             <button
               onClick={onJoinSession}
-              className="bg-white/5 hover:bg-white/10 text-white px-6 md:px-8 py-3 rounded-xl text-sm md:text-base font-semibold transition-all border border-white/10 w-full max-w-[220px]"
+              className="bg-black/60 hover:bg-white hover:text-black text-white px-6 md:px-8 py-3 rounded-xl text-sm md:text-base font-semibold transition-all border border-white/20 hover:border-white shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_25px_rgba(255,255,255,0.25)] w-full max-w-[220px] active:scale-[0.98]"
             >
               CONNECT MIC &rarr;
             </button>
@@ -260,12 +260,12 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
 
         {/* CONTROL DECK (Bottom Section: Open Control Room) */}
-        <div className="bg-black/20 rounded-2xl p-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 shadow-[inset_0_10px_20px_rgba(0,0,0,0.2)]">
+        <div className="bg-black/20 rounded-2xl p-6 border border-white/5 hover:border-white/30 hover:bg-white/[0.02] hover:shadow-[0_0_30px_rgba(255,255,255,0.12),inset_0_1px_2px_rgba(255,255,255,0.1)] flex flex-col md:flex-row items-center justify-between gap-6 shadow-[inset_0_10px_20px_rgba(0,0,0,0.2)] transition-all duration-300 group cursor-default">
           
           <div className="flex items-center gap-6 text-center md:text-left">
             {/* Mixer / Equalizer Icon */}
-            <div className="w-16 h-16 rounded-xl bg-white/5 border border-white/5 flex-shrink-0 items-center justify-center shadow-inner hidden md:flex backdrop-blur-sm">
-              <svg className="w-8 h-8 text-sky-400/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-16 h-16 rounded-xl bg-white/5 border border-white/5 group-hover:border-white/20 group-hover:shadow-[0_0_15px_rgba(255,255,255,0.1)] flex-shrink-0 items-center justify-center shadow-inner hidden md:flex backdrop-blur-sm transition-all duration-300">
+              <svg className="w-8 h-8 text-white/80 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
               </svg>
             </div>
@@ -279,7 +279,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           {/* Deck Action Button */}
           <button
             onClick={onOpenControlRoom}
-            className="bg-white/5 hover:bg-white/10 text-white px-6 md:px-8 py-4 rounded-xl text-sm md:text-base font-semibold transition-all border border-white/10 flex-shrink-0 flex items-center justify-center gap-2 w-full md:w-auto shadow-[inset_0_2px_10px_rgba(255,255,255,0.05)]"
+            className="bg-black/60 hover:bg-white hover:text-black text-white px-6 md:px-8 py-4 rounded-xl text-sm md:text-base font-semibold transition-all border border-white/20 hover:border-white shadow-[0_0_15px_rgba(0,0,0,0.5)] hover:shadow-[0_0_25px_rgba(255,255,255,0.25)] flex-shrink-0 flex items-center justify-center gap-2 w-full md:w-auto active:scale-[0.98]"
           >
             ENTER CONTROL ROOM &rarr;
           </button>
