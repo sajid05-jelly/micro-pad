@@ -49,10 +49,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
       <main className="relative z-10 flex-1 max-w-5xl w-full mx-auto px-4 sm:px-8 py-10 sm:py-16 flex flex-col justify-center">
         {/* Hero Title */}
         <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 liquid-glass-subtle text-xs font-mono uppercase tracking-widest text-text-secondary rounded-full mb-4 shadow-sm">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent-blue" />
-            <span>WIRELESS PA MICROPHONE SYSTEM</span>
-          </div>
           <h1 className="font-heading font-black text-3xl sm:text-5xl tracking-tight uppercase text-text-primary mb-3">
             MICRO MAX
           </h1>
