@@ -74,6 +74,21 @@ export default function App() {
   const hostAudioRef = useRef<HostAudioEngine>(new HostAudioEngine());
   const socketRef = useRef<Socket | null>(null);
 
+  // Prevent any scrolling on the home entry page
+  useEffect(() => {
+    if (role === 'home') {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+    };
+  }, [role]);
+
   // Listen to popstate or browser navigation changes
   useEffect(() => {
     const handleUrlChange = () => {
@@ -243,7 +258,7 @@ export default function App() {
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#05080f] text-text-primary relative overflow-x-hidden">
+    <div className={`w-full ${role === 'home' ? 'h-screen max-h-screen overflow-hidden' : 'min-h-screen overflow-x-hidden'} bg-[#05080f] text-text-primary relative`}>
       {/* Live Rotating Antigravity Glow Effect */}
       <div className="glow-container">
         <div className="glow-spinner">
@@ -257,7 +272,7 @@ export default function App() {
       <div className="mesh-pattern" />
 
       {/* Main Content layer */}
-      <div className="relative z-10 w-full min-h-screen">
+      <div className={`relative z-10 w-full ${role === 'home' ? 'h-full max-h-screen overflow-hidden' : 'min-h-screen'}`}>
         {role === 'home' ? (
           <HomeDashboard
             sessionId={sessionId}

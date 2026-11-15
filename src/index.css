@@ -292,3 +292,29 @@ iframe[title*="Powered by Netlify"] {
   top: -9999px !important;
   left: -9999px !important;
 }
+
+/* Responsive Deck Container to eliminate scrolling on home screen */
+.deck-container {
+  width: 100%;
+  max-width: 64rem;
+  transition: transform 0.2s ease-out;
+  transform-origin: center center;
+}
+
+@media (max-height: 820px) {
+  .deck-container {
+    transform: scale(0.92);
+  }
+}
+
+@media (max-height: 720px) {
+  .deck-container {
+    transform: scale(0.84);
+  }
+}
+
+@media (max-height: 640px) {
+  .deck-container {
+    transform: scale(0.76);
+  }
+}
