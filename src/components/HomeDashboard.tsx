@@ -217,11 +217,6 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
         </div>
       </main>
-
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-border/80 py-4 px-4 text-center text-xs font-mono text-text-muted">
-        MICRO MAX // WIRELESS MICROPHONE & PA BROADCAST SYSTEM
-      </footer>
     </div>
   );
 };
