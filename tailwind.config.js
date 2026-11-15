@@ -38,8 +38,8 @@ export default {
         },
         ambient: {
           cyan: '#0ea5e9',
-          blue: '#1d4ed8',
-          violet: '#4c1d95',
+          blue: '#216ccf',
+          violet: '#4b2d7a',
         },
       },
       fontFamily: {

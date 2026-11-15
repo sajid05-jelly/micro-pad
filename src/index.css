@@ -57,10 +57,10 @@
   height: 120vw;
   max-width: 1400px;
   max-height: 1400px;
-  top: 65vh; /* Pushed to bottom allowing blur to bleed upwards */
+  top: 65vh; /* Pushed to the bottom, allowing blur to bleed up */
   animation: spin 20s linear infinite;
-  filter: blur(150px); /* Seamless endless atmospheric fade */
-  opacity: 0.85;
+  filter: blur(150px); /* Increased blur for a seamless endless fade */
+  opacity: 0.8;
   transform-origin: center center;
   will-change: transform;
 }
@@ -81,22 +81,22 @@
   animation-duration: 14s;
 }
 
-/* Deep Blue Blob */
+/* Soft Blue Blob */
 .blob-blue {
   width: 70%;
   height: 65%;
-  background-color: #1d4ed8;
+  background-color: #216ccf;
   bottom: 5%;
   right: 0;
   animation-duration: 18s;
   animation-direction: reverse;
 }
 
-/* Dark Violet Blob */
+/* Violet Blob */
 .blob-violet {
   width: 55%;
   height: 55%;
-  background-color: #4c1d95;
+  background-color: #4b2d7a;
   top: 25%;
   left: 35%;
   animation-duration: 11s;
@@ -111,8 +111,9 @@
   height: 100vh;
   background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
   background-size: 16px 16px;
-  mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, transparent 75%);
-  -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, transparent 75%);
+  /* Fades out smoothly without any sharp horizontal line */
+  mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, transparent 75%);
+  -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, transparent 75%);
   z-index: 1;
   pointer-events: none;
 }
@@ -243,6 +244,15 @@
     inset 0 0 25px 0 rgba(52, 120, 246, 0.3),
     0 25px 50px -12px rgba(0, 0, 0, 0.85),
     0 0 30px 4px rgba(14, 165, 233, 0.4) !important;
+}
+
+/* Glassmorphism utility override */
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
 /* Tactile button press effect */
