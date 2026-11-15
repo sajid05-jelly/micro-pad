@@ -138,6 +138,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   return (
     <div className="min-h-screen bg-transparent p-4 md:p-10 flex flex-col justify-center items-center font-sans text-white relative">
+      {/* Huge Vertical Brand Mark on Left (Bottom-to-Top orientation) */}
+      <div className="fixed left-0 top-0 bottom-0 w-24 md:w-32 lg:w-40 z-0 pointer-events-none select-none hidden md:flex items-center justify-center">
+        <span className="font-heading font-black text-5xl md:text-6xl lg:text-7xl xl:text-8xl 2xl:text-9xl tracking-[0.3em] uppercase text-transparent bg-clip-text bg-gradient-to-r from-sky-400/40 via-white/20 to-white/5 whitespace-nowrap transform -rotate-90 origin-center drop-shadow-[0_0_30px_rgba(14,165,233,0.18)]">
+          MIC MAX
+        </span>
+      </div>
+
       {/* Offline Alert Banner (Only shown if offline/error) */}
       {connectionStatus !== 'CONNECTED' && connectionStatus !== 'CONNECTING' && (
         <div className="relative z-20 max-w-md w-full mx-auto mb-6 px-4 py-2 bg-white/5 backdrop-blur-md border border-red-500/40 text-red-300 rounded-full text-xs font-mono flex items-center justify-between gap-3 shadow-lg">
