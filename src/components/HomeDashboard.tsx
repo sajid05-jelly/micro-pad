@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { WifiOff } from 'lucide-react';
+import { RotatePhonePrompt } from './RotatePhonePrompt.js';
 
 interface HomeDashboardProps {
   sessionId: string;
@@ -69,12 +70,18 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         reel.isDragging = true;
         updateCenter();
         reel.lastPointerAngle = getAngleFromEvent(e);
+
+        // Attach move and end listeners ONLY while dragging for maximum 120fps performance
+        window.addEventListener('mousemove', onMove, { passive: false });
+        window.addEventListener('mouseup', onEnd);
+        window.addEventListener('touchmove', onMove, { passive: false });
+        window.addEventListener('touchend', onEnd);
       };
 
       const onMove = (e: MouseEvent | TouchEvent) => {
         if (!reel.isDragging) return;
 
-        // Prevent default scrolling when dragging reels on mobile
+        // Prevent default scrolling when dragging reels on mobile touch screens
         if (e.cancelable) {
           e.preventDefault();
         }
@@ -86,44 +93,47 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         if (deltaAngle > 180) deltaAngle -= 360;
         if (deltaAngle < -180) deltaAngle += 360;
 
-        reel.angle += deltaAngle;
+        reel.angle = (reel.angle + deltaAngle) % 360;
         reel.lastPointerAngle = currentPointerAngle;
       };
 
       const onEnd = () => {
         reel.isDragging = false;
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onEnd);
+        window.removeEventListener('touchmove', onMove);
+        window.removeEventListener('touchend', onEnd);
       };
 
-      // Mouse Events
+      // Attach touch/mouse start to the specific container
       container.addEventListener('mousedown', onStart);
-      window.addEventListener('mousemove', onMove, { passive: false });
-      window.addEventListener('mouseup', onEnd);
-
-      // Touch Events
       container.addEventListener('touchstart', onStart, { passive: false });
-      window.addEventListener('touchmove', onMove, { passive: false });
-      window.addEventListener('touchend', onEnd);
 
       cleanups.push(() => {
         container.removeEventListener('mousedown', onStart);
+        container.removeEventListener('touchstart', onStart);
         window.removeEventListener('mousemove', onMove);
         window.removeEventListener('mouseup', onEnd);
-
-        container.removeEventListener('touchstart', onStart);
         window.removeEventListener('touchmove', onMove);
         window.removeEventListener('touchend', onEnd);
       });
     });
 
-    // Animation Loop for Auto-Spin & Applying Angles
+    // Hardware-Accelerated 120 FPS Animation Loop
     let animId: number;
-    const animate = () => {
+    let lastTime = performance.now();
+
+    const animate = (currentTime: number) => {
+      const delta = Math.min((currentTime - lastTime) / 16.67, 2.5);
+      lastTime = currentTime;
+
       reels.forEach(reel => {
         if (!reel.isDragging) {
-          reel.angle += 0.8; // Auto spin speed
+          reel.angle = (reel.angle + 0.8 * delta) % 360;
         }
         if (reel.element) {
-          reel.element.style.transform = `rotate(${reel.angle}deg)`;
+          // Hardware-accelerated translateZ(0) prevents main-thread re-rasterization
+          reel.element.style.transform = `rotate(${reel.angle}deg) translateZ(0)`;
         }
       });
       animId = requestAnimationFrame(animate);
@@ -138,6 +148,9 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
   return (
     <div className="h-screen max-h-screen w-full overflow-hidden bg-transparent px-3 py-2 sm:px-6 sm:py-3 md:px-8 md:py-4 flex flex-col justify-center items-center font-sans text-white relative select-none">
+      {/* Mobile-Only Orientation Lock Prompt: prompts user to use horizontal/landscape mode */}
+      <RotatePhonePrompt />
+
       {/* Huge Vertical Brand Mark on Left (Bottom-to-Top orientation) */}
       <div className="fixed left-0 top-0 bottom-0 w-20 md:w-28 lg:w-36 z-0 pointer-events-none select-none hidden md:flex items-center justify-center">
         <span className="font-heading font-black text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl tracking-[0.3em] uppercase text-transparent bg-clip-text bg-gradient-to-r from-sky-400/40 via-white/20 to-white/5 whitespace-nowrap transform -rotate-90 origin-center drop-shadow-[0_0_30px_rgba(14,165,233,0.18)]">

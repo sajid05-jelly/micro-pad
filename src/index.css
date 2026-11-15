@@ -36,6 +36,7 @@
 
 /* ========================================================= */
 /* LIVE ROTATING ANTIGRAVITY GLOW EFFECT & MORPHING BLOBS    */
+/* BUTTERY-SMOOTH HARDWARE-ACCELERATED AMBIENT ENGINE        */
 /* ========================================================= */
 .glow-container {
   position: fixed;
@@ -49,6 +50,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  contain: strict;
+  transform: translate3d(0, 0, 0);
 }
 
 .glow-spinner {
@@ -59,23 +62,35 @@
   max-height: 1400px;
   top: 65vh; /* Pushed to the bottom, allowing blur to bleed up */
   animation: spin 20s linear infinite;
-  filter: blur(150px); /* Increased blur for a seamless endless fade */
-  opacity: 0.8;
+  filter: blur(55px); /* Pre-feathered radial gradients enable low-cost 120fps blur */
+  opacity: 0.85;
   transform-origin: center center;
   will-change: transform;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+@media (max-width: 768px) {
+  .glow-spinner {
+    filter: blur(35px); /* Super-optimized for mobile GPUs */
+    width: 140vw;
+    height: 140vw;
+  }
 }
 
 .blob {
   position: absolute;
   animation: morph 10s ease-in-out infinite;
   will-change: border-radius;
+  transform: translateZ(0);
 }
 
 /* Cyan Blob */
 .blob-cyan {
   width: 60%;
   height: 60%;
-  background-color: #0ea5e9;
+  background: radial-gradient(circle, #0ea5e9 0%, rgba(14, 165, 233, 0.45) 45%, transparent 75%);
   top: 0;
   left: 10%;
   animation-duration: 14s;
@@ -85,7 +100,7 @@
 .blob-blue {
   width: 70%;
   height: 65%;
-  background-color: #216ccf;
+  background: radial-gradient(circle, #216ccf 0%, rgba(33, 108, 207, 0.45) 45%, transparent 75%);
   bottom: 5%;
   right: 0;
   animation-duration: 18s;
@@ -96,7 +111,7 @@
 .blob-violet {
   width: 55%;
   height: 55%;
-  background-color: #4b2d7a;
+  background: radial-gradient(circle, #4b2d7a 0%, rgba(75, 45, 122, 0.45) 45%, transparent 75%);
   top: 25%;
   left: 35%;
   animation-duration: 11s;
@@ -116,6 +131,8 @@
   -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, transparent 75%);
   z-index: 1;
   pointer-events: none;
+  contain: strict;
+  transform: translate3d(0, 0, 0);
 }
 
 /* Organic Shapeless Morphing Animation */
@@ -317,4 +334,59 @@ iframe[title*="Powered by Netlify"] {
   .deck-container {
     transform: scale(0.76);
   }
+}
+
+/* Extra Compact Scaling for Mobile Devices held Horizontally / Landscape */
+@media (max-height: 500px) {
+  .deck-container {
+    transform: scale(0.66);
+  }
+}
+
+@media (max-height: 420px) {
+  .deck-container {
+    transform: scale(0.58);
+  }
+}
+
+@media (max-height: 360px) {
+  .deck-container {
+    transform: scale(0.50);
+  }
+}
+
+/* ========================================================= */
+/* ROTATE PHONE PROMPT ANIMATIONS                            */
+/* ========================================================= */
+@keyframes rotatePhoneAnim {
+  0%, 15% {
+    transform: rotate(0deg);
+  }
+  45%, 70% {
+    transform: rotate(-90deg);
+  }
+  90%, 100% {
+    transform: rotate(0deg);
+  }
+}
+
+.animate-rotate-phone {
+  animation: rotatePhoneAnim 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+@keyframes spinSlow {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spinSlow 12s linear infinite;
+  transform-origin: center center;
+  will-change: transform;
 }
