@@ -178,10 +178,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         {/* MAIN CASSETTE WINDOW (Top Section) */}
         <div className="bg-[#03050a] rounded-3xl p-6 md:p-8 border border-white/5 shadow-[inset_0_10px_40px_rgba(0,0,0,0.8)] relative flex flex-col md:flex-row gap-10 items-center justify-between mb-8">
           
-          {/* Center Tape Reading Head / Window Detail */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-28 border border-white/5 rounded-xl bg-white/[0.01] items-center justify-center hidden lg:flex backdrop-blur-md z-0">
-            <div className="w-full h-[1px] bg-sky-500/20"></div>
-          </div>
+          {/* Center Straight Divider Line (Replaces unwanted center box) */}
+          <div className="hidden md:block absolute left-1/2 top-8 bottom-8 -translate-x-1/2 w-px bg-gradient-to-b from-transparent via-sky-400/30 to-transparent pointer-events-none z-0"></div>
 
           {/* LEFT REEL (Start a Session) */}
           <div className="flex-1 w-full relative z-10 flex flex-col items-center text-center">
