@@ -425,77 +425,107 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
       )}
 
       {/* ===================== TOP HEADER ===================== */}
-      <header className="bg-bg-secondary/80 backdrop-blur-md border-b border-border px-4 py-2.5 flex items-center justify-between select-none">
-        {/* Left Wordmark & Session */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2.5 cursor-pointer" onClick={onGoHome} title="Go to Home Dashboard">
-            <div className="w-7 h-7 rounded-lg bg-bg-card border border-border text-accent-blue flex items-center justify-center font-bold shadow-sm">
-              <Radio size={15} className="animate-pulse" />
+      <header className="bg-bg-secondary/90 backdrop-blur-md border-b border-border px-4 h-14 flex items-center justify-between select-none gap-3 overflow-x-auto no-scrollbar">
+        {/* Left Wordmark & Session Info */}
+        <div className="flex items-center gap-3.5 flex-shrink-0">
+          <div className="flex items-center gap-2.5 cursor-pointer group" onClick={onGoHome} title="Go to Home Dashboard">
+            <div className="w-8 h-8 rounded-lg bg-bg-card border border-border text-accent-blue flex items-center justify-center font-bold shadow-sm group-hover:border-accent-blue/50 transition-colors flex-shrink-0">
+              <Radio size={16} className="animate-pulse" />
             </div>
-            <h1 className="font-heading font-black text-xl tracking-widest uppercase text-text-primary">
+            <h1 className="font-heading font-black text-lg tracking-widest uppercase text-text-primary whitespace-nowrap">
               MICRO MAX
             </h1>
           </div>
-          <div className="h-5 w-px bg-border" />
-          <div className="flex items-center gap-3 text-xs font-mono">
-            <span className="text-text-muted">SESSION:</span>
-            <span className="font-bold text-text-primary">{sessionId}</span>
-            <span className="px-2 py-0.5 border border-border text-[10px] text-accent-blue bg-bg-card rounded">
-              {session?.sessionName || 'STAGE BROADCAST'}
+          <div className="h-5 w-px bg-border flex-shrink-0" />
+          <div className="flex items-center gap-2 text-xs font-mono whitespace-nowrap flex-shrink-0">
+            <span className="text-text-muted text-[11px]">SESSION:</span>
+            <span className="font-bold text-text-primary text-xs">{sessionId}</span>
+            <span className="h-6 px-2.5 flex items-center border border-border text-[10px] text-accent-blue bg-bg-card rounded-md font-mono whitespace-nowrap">
+              {session?.sessionName || 'MAIN BROADCAST STAGE'}
             </span>
           </div>
         </div>
 
-        {/* Center Indicators */}
-        <div className="hidden lg:flex items-center gap-5 text-xs font-mono">
-          {/* Live PA Output Status */}
+        {/* Center Indicators: Strictly Aligned Single-Line Badges */}
+        <div className="hidden xl:flex items-center gap-3.5 text-xs font-mono flex-shrink-0">
+          {/* Live PA Output Status Button */}
           <button
             onClick={handleEngageAudio}
             title="Click to toggle or test PA output chime"
-            className="flex items-center gap-1.5 px-2.5 py-1 border border-border bg-bg-card hover:border-border-hover rounded-lg cursor-pointer transition-colors"
+            className={`h-8 px-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-2 whitespace-nowrap flex-shrink-0 btn-tactile ${
+              audioEngineState === 'running'
+                ? 'border-emerald-500/40 bg-emerald-950/20 hover:bg-emerald-950/40'
+                : 'border-yellow-500/40 bg-yellow-950/20 hover:bg-yellow-950/40'
+            }`}
           >
             {audioEngineState === 'running' ? (
-              <span className="text-accent-blue font-bold flex items-center gap-1 text-[11px]">
-                <span className="w-2 h-2 rounded-full bg-accent-blue animate-pulse" />
-                <span>PA OUTPUT LIVE</span>
-              </span>
+              <>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                <span className="text-emerald-300 font-bold text-[11px] tracking-wide whitespace-nowrap">
+                  PA OUTPUT LIVE
+                </span>
+              </>
             ) : (
-              <span className="text-yellow-400 font-bold flex items-center gap-1 text-[11px]">
-                <span className="w-2 h-2 rounded-full bg-yellow-400" />
-                <span>PA MUTED (CLICK TO UNMUTE)</span>
-              </span>
+              <>
+                <span className="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0" />
+                <span className="text-yellow-300 font-bold text-[11px] tracking-wide whitespace-nowrap">
+                  PA MUTED (CLICK TO UNMUTE)
+                </span>
+              </>
             )}
           </button>
 
-          <div className="flex items-center gap-1.5">
-            <Wifi size={13} className="text-accent-blue" />
-            <span className="text-text-muted">LAN IP:</span>
-            <span className="font-semibold text-text-primary">{localIp}:5173</span>
+          {/* LAN IP Badge */}
+          <div className="h-8 px-2.5 rounded-lg bg-bg-card border border-border flex items-center gap-1.5 whitespace-nowrap flex-shrink-0">
+            <Wifi size={13} className="text-accent-blue flex-shrink-0" />
+            <span className="text-text-muted text-[11px]">LAN IP:</span>
+            <span className="font-semibold text-text-primary text-xs">{localIp}:5173</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Users size={13} className="text-accent-blue" />
-            <span className="text-text-muted">UNITS:</span>
-            <span className="font-semibold text-text-primary">{participants.length} CONNECTED</span>
+
+          {/* Connected Units Badge */}
+          <div className="h-8 px-2.5 rounded-lg bg-bg-card border border-border flex items-center gap-1.5 whitespace-nowrap flex-shrink-0">
+            <Users size={13} className="text-accent-blue flex-shrink-0" />
+            <span className="text-text-muted text-[11px]">UNITS:</span>
+            <span className="font-semibold text-text-primary text-xs">{participants.length} CONNECTED</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Cpu size={13} className="text-accent-blue" />
-            <span className="text-text-muted">ENGINE:</span>
-            <span className={`font-semibold uppercase ${session?.mode === 'auto' ? 'text-accent-blue underline font-bold' : 'text-text-secondary'}`}>
+
+          {/* Engine Mode Badge */}
+          <div className="h-8 px-2.5 rounded-lg bg-bg-card border border-border flex items-center gap-1.5 whitespace-nowrap flex-shrink-0">
+            <Cpu size={13} className="text-accent-blue flex-shrink-0" />
+            <span className="text-text-muted text-[11px]">ENGINE:</span>
+            <span className={`font-semibold text-xs uppercase ${session?.mode === 'auto' ? 'text-accent-blue font-bold' : 'text-text-secondary'}`}>
               {session?.mode || 'MANUAL'}
             </span>
           </div>
         </div>
 
-        {/* Right Session Controls */}
-        <div className="flex items-center gap-2">
+        {/* Right Session Controls: Uniform h-8 Height Buttons */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Responsive PA indicator for screens narrower than xl */}
+          <div className="xl:hidden flex items-center">
+            <button
+              onClick={handleEngageAudio}
+              className={`h-8 px-2.5 border rounded-lg cursor-pointer transition-colors flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
+                audioEngineState === 'running'
+                  ? 'border-emerald-500/40 bg-emerald-950/20 text-emerald-300'
+                  : 'border-yellow-500/40 bg-yellow-950/20 text-yellow-300'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${audioEngineState === 'running' ? 'bg-emerald-400 animate-pulse' : 'bg-yellow-400'}`} />
+              <span className="text-[10px] font-mono font-bold">
+                {audioEngineState === 'running' ? 'PA LIVE' : 'PA MUTED'}
+              </span>
+            </button>
+          </div>
+
           {onGoHome && (
             <button
               onClick={onGoHome}
-              className="px-2.5 py-1.5 bg-bg-card border border-border text-xs font-mono text-text-secondary hover:text-text-primary hover:border-border-hover rounded-lg btn-tactile flex items-center gap-1.5 transition-colors"
+              className="h-8 px-3 bg-bg-card border border-border text-xs font-mono text-text-secondary hover:text-text-primary hover:border-border-hover rounded-lg btn-tactile flex items-center gap-1.5 transition-colors whitespace-nowrap flex-shrink-0"
               title="Return to Home Dashboard"
             >
-              <Home size={13} />
-              <span className="hidden sm:inline">HOME</span>
+              <Home size={13} className="flex-shrink-0" />
+              <span className="whitespace-nowrap">HOME</span>
             </button>
           )}
 
@@ -505,36 +535,36 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
               setQrChannelNumber(undefined);
               setIsQRModalOpen(true);
             }}
-            className="px-3 py-1.5 bg-bg-card border border-border text-xs font-mono text-text-primary hover:border-border-hover hover:text-white rounded-lg btn-tactile flex items-center gap-1.5 transition-colors"
+            className="h-8 px-3 bg-bg-card border border-border text-xs font-mono text-text-primary hover:border-border-hover hover:text-white rounded-lg btn-tactile flex items-center gap-1.5 transition-colors whitespace-nowrap flex-shrink-0"
           >
-            <QrCode size={13} />
-            <span>CONNECT PHONES</span>
+            <QrCode size={13} className="flex-shrink-0 text-accent-blue" />
+            <span className="whitespace-nowrap">CONNECT PHONES</span>
           </button>
 
           {/* Mute All Toggle */}
           <button
             onClick={handleToggleMuteAll}
-            className={`px-3 py-1.5 text-xs font-mono font-bold tracking-wider uppercase border rounded-lg btn-tactile flex items-center gap-1.5 transition-colors ${
+            className={`h-8 px-3 text-xs font-mono font-bold tracking-wider uppercase border rounded-lg btn-tactile flex items-center gap-1.5 transition-colors whitespace-nowrap flex-shrink-0 ${
               session?.isMuteAll
                 ? 'bg-red-950/60 text-red-300 border-red-500/50'
                 : 'bg-bg-card text-text-primary border-border hover:border-border-hover'
             }`}
           >
-            <VolumeX size={13} />
-            <span>{session?.isMuteAll ? 'ALL MUTED' : 'MUTE ALL'}</span>
+            <VolumeX size={13} className="flex-shrink-0" />
+            <span className="whitespace-nowrap">{session?.isMuteAll ? 'ALL MUTED' : 'MUTE ALL'}</span>
           </button>
 
           {/* Emergency Stop Hard Cut */}
           <button
             onClick={handleEmergencyStop}
-            className={`px-3 py-1.5 text-xs font-mono font-black tracking-widest uppercase border rounded-lg btn-tactile flex items-center gap-1.5 transition-colors ${
+            className={`h-8 px-3.5 text-xs font-mono font-black tracking-widest uppercase border rounded-lg btn-tactile flex items-center gap-1.5 transition-colors whitespace-nowrap flex-shrink-0 ${
               session?.isEmergencyStop
                 ? 'bg-red-600 text-white border-red-500 ring-2 ring-red-400/40 animate-pulse'
                 : 'bg-bg-card text-red-400 border-red-500/60 hover:bg-red-500 hover:text-white'
             }`}
           >
-            <AlertOctagon size={14} />
-            <span>{session?.isEmergencyStop ? 'STOPPED' : 'EMERGENCY STOP'}</span>
+            <AlertOctagon size={14} className="flex-shrink-0" />
+            <span className="whitespace-nowrap">{session?.isEmergencyStop ? 'STOPPED' : 'EMERGENCY STOP'}</span>
           </button>
         </div>
       </header>
