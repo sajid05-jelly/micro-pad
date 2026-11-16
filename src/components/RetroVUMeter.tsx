@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 interface RetroVUMeterProps {
   level: number; // 0 to 100
@@ -10,7 +10,7 @@ interface RetroVUMeterProps {
   numericValue?: string;
 }
 
-export const RetroVUMeter: React.FC<RetroVUMeterProps> = ({
+export const RetroVUMeter: React.FC<RetroVUMeterProps> = React.memo(({
   level,
   segments = 16,
   height = 'h-4',
@@ -20,17 +20,26 @@ export const RetroVUMeter: React.FC<RetroVUMeterProps> = ({
   numericValue
 }) => {
   const [peakHold, setPeakHold] = useState(0);
+  const peakRef = useRef(0);
+  const levelRef = useRef(level);
+  levelRef.current = level;
 
   useEffect(() => {
-    if (level > peakHold) {
+    if (level > peakRef.current) {
+      peakRef.current = level;
       setPeakHold(level);
-    } else {
-      const timer = setTimeout(() => {
-        setPeakHold(prev => Math.max(0, prev - 3));
-      }, 80);
-      return () => clearTimeout(timer);
     }
-  }, [level, peakHold]);
+  }, [level]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (peakRef.current > levelRef.current) {
+        peakRef.current = Math.max(levelRef.current, peakRef.current - 4);
+        setPeakHold(peakRef.current);
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, []);
 
   const activeCount = Math.round((level / 100) * segments);
   const peakSegmentIndex = Math.min(segments - 1, Math.floor((peakHold / 100) * segments));
@@ -81,4 +90,4 @@ export const RetroVUMeter: React.FC<RetroVUMeterProps> = ({
       )}
     </div>
   );
-};
+});

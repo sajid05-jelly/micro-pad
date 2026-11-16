@@ -17,7 +17,7 @@ interface MicCardProps {
   onTrimChange?: (trim: number) => void;
 }
 
-export const MicCard: React.FC<MicCardProps> = ({
+export const MicCard = React.memo<MicCardProps>(({
   participant,
   isSelected,
   onSelect,
@@ -40,7 +40,7 @@ export const MicCard: React.FC<MicCardProps> = ({
 
   return (
     <div
-      className={`relative flex flex-col p-3.5 transition-all rounded-2xl ${
+      className={`relative flex flex-col p-3.5 transition-all rounded-2xl w-full min-w-0 ${
         isSelected
           ? 'liquid-glass-active text-text-primary'
           : 'liquid-glass text-text-primary hover:border-accent-blue/40'
@@ -182,7 +182,7 @@ export const MicCard: React.FC<MicCardProps> = ({
         {/* Route / Broadcast button */}
         <button
           onClick={onSelect}
-          className={`col-span-2 py-1.5 px-2 text-xs font-mono font-bold tracking-wider uppercase rounded-lg border btn-tactile flex items-center justify-center gap-1.5 shadow-sm ${
+          className={`col-span-2 py-2 px-2 text-xs font-mono font-bold tracking-wider uppercase rounded-lg border btn-tactile flex items-center justify-center gap-1.5 shadow-sm min-h-[38px] ${
             isSelected
               ? 'bg-accent-blue text-white border-accent-blue hover:bg-accent-blue-hover'
               : 'bg-bg-secondary text-text-primary border-border hover:border-border-hover hover:text-white'
@@ -196,7 +196,7 @@ export const MicCard: React.FC<MicCardProps> = ({
         <button
           onClick={() => onToggleMute(!isMuted)}
           title={isMuted ? 'Unmute participant' : 'Mute participant'}
-          className={`py-1.5 px-1.5 text-xs rounded-lg border btn-tactile flex items-center justify-center transition-colors ${
+          className={`py-2 px-1.5 text-xs rounded-lg border btn-tactile flex items-center justify-center transition-colors min-h-[38px] ${
             isMuted
               ? 'bg-red-950/50 text-red-300 border-red-500/50 shadow-sm'
               : isSelected
@@ -204,7 +204,7 @@ export const MicCard: React.FC<MicCardProps> = ({
               : 'border-border bg-bg-secondary text-text-secondary hover:text-text-primary hover:border-border-hover'
           }`}
         >
-          {isMuted ? <MicOff size={13} /> : <Mic size={13} />}
+          {isMuted ? <MicOff size={14} /> : <Mic size={14} />}
         </button>
       </div>
 
@@ -213,7 +213,7 @@ export const MicCard: React.FC<MicCardProps> = ({
         <button
           onClick={onKick}
           title="Disconnect participant"
-          className="text-[9px] font-mono flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity text-text-muted hover:text-red-400"
+          className="text-[9px] font-mono flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity text-text-muted hover:text-red-400 py-1"
         >
           <PowerOff size={9} />
           <span>EJECT</span>
@@ -221,4 +221,22 @@ export const MicCard: React.FC<MicCardProps> = ({
       </div>
     </div>
   );
-};
+}, (prev, next) => {
+  return (
+    prev.isSelected === next.isSelected &&
+    prev.isQuickSlot === next.isQuickSlot &&
+    prev.trimMultiplier === next.trimMultiplier &&
+    prev.participant.id === next.participant.id &&
+    prev.participant.name === next.participant.name &&
+    prev.participant.state === next.participant.state &&
+    prev.participant.priority === next.participant.priority &&
+    prev.participant.channelNumber === next.participant.channelNumber &&
+    prev.participant.isSpeaking === next.participant.isSpeaking &&
+    prev.participant.isMutedByAdmin === next.participant.isMutedByAdmin &&
+    prev.participant.isMutedSelf === next.participant.isMutedSelf &&
+    Math.round((prev.participant.audioLevel || 0) / 4) === Math.round((next.participant.audioLevel || 0) / 4) &&
+    prev.stats?.isClipping === next.stats?.isClipping &&
+    prev.stats?.packetLossPct === next.stats?.packetLossPct &&
+    prev.stats?.rttMs === next.stats?.rttMs
+  );
+});

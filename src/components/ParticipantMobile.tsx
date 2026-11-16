@@ -222,22 +222,27 @@ export const ParticipantMobile: React.FC<ParticipantMobileProps> = ({
       setMicPermissionGranted(true);
       setMicPermissionState('granted');
 
-      // 3. Start high-precision time-domain RMS meter loop
+      // 3. Start high-precision time-domain RMS meter loop with throttled UI state updates (~25 FPS)
       let lastTelemetryTime = 0;
+      let lastUiUpdateTime = 0;
       engine.startMeterLoop((data: AudioLevelData) => {
         if (!isMountedRef.current) return;
 
-        setAudioLevel(data.levelPct);
-        setDbLevel(data.db);
-        setRawRms(data.rawRms);
-        setPeakLevel(data.peak);
-        setIsSpeaking(data.isSpeaking);
-        setIsClipping(data.isClipping);
+        const now = performance.now();
+        if (now - lastUiUpdateTime >= 40) {
+          lastUiUpdateTime = now;
+          setAudioLevel(data.levelPct);
+          setDbLevel(data.db);
+          setRawRms(data.rawRms);
+          setPeakLevel(data.peak);
+          setIsSpeaking(data.isSpeaking);
+          setIsClipping(data.isClipping);
+        }
 
         // Throttle telemetry sent to host console (~15 updates/sec)
-        const now = Date.now();
-        if (socket && socket.connected && now - lastTelemetryTime > 66) {
-          lastTelemetryTime = now;
+        const wallNow = Date.now();
+        if (socket && socket.connected && wallNow - lastTelemetryTime > 66) {
+          lastTelemetryTime = wallNow;
           socket.emit('participant:telemetry', {
             audioLevel: data.levelPct,
             isSpeaking: data.isSpeaking

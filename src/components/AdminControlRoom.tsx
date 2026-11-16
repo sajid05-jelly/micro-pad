@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
 import { 
   SessionState, 
@@ -9,6 +9,7 @@ import {
 import { HostAudioEngine, optimizeOpusSDP, PeerNetworkStats } from '../audio/HostAudioEngine.js';
 import { MicCard } from './MicCard.js';
 import { RetroVUMeter } from './RetroVUMeter.js';
+import { MasterVUMeter } from './MasterVUMeter.js';
 import { AudioOutputPanel } from './AudioOutputPanel.js';
 import { AutoModeConfigPanel } from './AutoModeConfigPanel.js';
 import { QRCodeModal } from './QRCodeModal.js';
@@ -43,7 +44,9 @@ import {
   ChevronDown,
   ChevronUp,
   Home,
-  Smartphone
+  Smartphone,
+  Menu,
+  X
 } from 'lucide-react';
 
 interface AdminControlRoomProps {
@@ -68,13 +71,18 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
   const [micFilter, setMicFilter] = useState<'all' | 'active' | 'ready' | 'muted' | 'vip' | 'weak'>('all');
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [qrChannelNumber, setQrChannelNumber] = useState<number | undefined>(undefined);
-  const [masterAudioLevel, setMasterAudioLevel] = useState<number>(0);
   const [peerStatsMap, setPeerStatsMap] = useState<Record<string, PeerNetworkStats>>({});
   const [channelTrimMap, setChannelTrimMap] = useState<Record<string, number>>({});
   const [audioEngineState, setAudioEngineState] = useState<AudioContextState | 'uninitialized'>('uninitialized');
   const [copiedLink, setCopiedLink] = useState(false);
   const [masterVolume, setMasterVolume] = useState(100);
   const [showAdvancedDiagnostics, setShowAdvancedDiagnostics] = useState(false);
+  const [showMobileSystemLog, setShowMobileSystemLog] = useState(false);
+
+  // Participant audio meter throttle buffer to eliminate CPU freezing in Chrome
+  const pendingMetersRef = useRef<Record<string, { level: number; isSpeaking: boolean }>>({});
+  const lastMeterFlushRef = useRef<number>(0);
+  const meterRafIdRef = useRef<number | null>(null);
 
   // Keep audio context state in sync and unlock on any user interaction
   useEffect(() => {
@@ -116,12 +124,17 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
     if (ctx) setAudioEngineState(ctx.state);
   };
 
-  // Poll peer network stats for all connected participant phones
+  // Poll peer network stats without invalidating interval on every audio packet
+  const participantIds = useMemo(() => {
+    return Object.keys(session?.participants || {}).sort().join(',');
+  }, [session?.participants]);
+
   useEffect(() => {
-    if (!session?.participants) return;
+    if (!participantIds) return;
+    const ids = participantIds.split(',').filter(Boolean);
     const interval = setInterval(async () => {
       const statsObj: Record<string, PeerNetworkStats> = {};
-      for (const id of Object.keys(session.participants)) {
+      for (const id of ids) {
         try {
           const stats = await hostAudio.getPeerStats(id);
           statsObj[id] = stats;
@@ -131,12 +144,12 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [session?.participants, hostAudio]);
+  }, [participantIds, hostAudio]);
 
-  const handleTrimChange = (participantId: string, trim: number) => {
+  const handleTrimChange = useCallback((participantId: string, trim: number) => {
     hostAudio.setChannelTrim(participantId, trim);
     setChannelTrimMap(prev => ({ ...prev, [participantId]: trim }));
-  };
+  }, [hostAudio]);
 
   const handleCopyLink = () => {
     const isPublicHttpsHost = typeof window !== 'undefined' && 
@@ -168,7 +181,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
     hostAudio.setMasterVolume(volPercent / 100);
   };
 
-  // Sync activeTab with URL search params and hash (supports bookmarking and back/forward buttons)
+  // Sync activeTab with URL search params and hash
   useEffect(() => {
     const syncTabFromUrl = () => {
       const params = new URLSearchParams(window.location.search);
@@ -195,41 +208,64 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
     window.history.pushState({ tab: tabId }, '', url.toString());
   };
 
-  // Synchronize audio routing with host Web Audio API
+  // Synchronize audio routing with host Web Audio API only when routing state actually changes
+  const mutedIdsString = useMemo(() => {
+    if (!session?.participants) return '';
+    return Object.values(session.participants)
+      .filter(p => p.isMutedByAdmin || p.isMutedSelf)
+      .map(p => p.id)
+      .sort()
+      .join(',');
+  }, [session?.participants]);
+
   useEffect(() => {
     if (!session) return;
-    const mutedIds = new Set<string>();
-    for (const p of Object.values(session.participants || {})) {
-      if (p.isMutedByAdmin || p.isMutedSelf) {
-        mutedIds.add(p.id);
-      }
-    }
-
+    const mutedIds = new Set<string>(mutedIdsString ? mutedIdsString.split(',') : []);
     hostAudio.setRouting(
       session.activeSpeakerId, 
       session.isMuteAll, 
       session.isEmergencyStop,
       mutedIds
     );
-  }, [session, hostAudio]);
+  }, [session?.activeSpeakerId, session?.isMuteAll, session?.isEmergencyStop, mutedIdsString, hostAudio]);
 
-  // Master output VU meter animation loop
-  useEffect(() => {
-    let animId: number;
-    const poll = () => {
-      const lvl = hostAudio.getMasterLevel();
-      // If server active speaker has audioLevel, mix in as fallback
-      if (session?.activeSpeakerId && session.participants[session.activeSpeakerId]) {
-        const pLevel = session.participants[session.activeSpeakerId].audioLevel;
-        setMasterAudioLevel(Math.max(lvl, pLevel));
-      } else {
-        setMasterAudioLevel(lvl);
+  // Flush pending audio meter packets at ~20 FPS without re-rendering when levels don't change
+  const flushPendingMeters = useCallback(() => {
+    const pending = pendingMetersRef.current;
+    const ids = Object.keys(pending);
+    if (ids.length === 0) return;
+    pendingMetersRef.current = {};
+
+    setSession(prev => {
+      if (!prev) return prev;
+      let hasChanges = false;
+      const updatedParticipants = { ...prev.participants };
+
+      for (const id of ids) {
+        const current = updatedParticipants[id];
+        if (current) {
+          const update = pending[id];
+          if (
+            Math.abs((current.audioLevel || 0) - update.level) >= 2 ||
+            current.isSpeaking !== update.isSpeaking
+          ) {
+            updatedParticipants[id] = {
+              ...current,
+              audioLevel: update.level,
+              isSpeaking: update.isSpeaking
+            };
+            hasChanges = true;
+          }
+        }
       }
-      animId = requestAnimationFrame(poll);
-    };
-    animId = requestAnimationFrame(poll);
-    return () => cancelAnimationFrame(animId);
-  }, [hostAudio, session]);
+
+      if (!hasChanges) return prev;
+      return {
+        ...prev,
+        participants: updatedParticipants
+      };
+    });
+  }, []);
 
   // Socket event listeners
   useEffect(() => {
@@ -239,22 +275,22 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
       setSession(updatedSession);
     });
 
-    // Real-time audio meter broadcast
+    // Real-time audio meter broadcast (throttled to ~20 FPS)
     socket.on('participant:audio_meter', ({ id, level, isSpeaking }: { id: string; level: number; isSpeaking: boolean }) => {
-      setSession(prev => {
-        if (!prev || !prev.participants[id]) return prev;
-        return {
-          ...prev,
-          participants: {
-            ...prev.participants,
-            [id]: {
-              ...prev.participants[id],
-              audioLevel: level,
-              isSpeaking
-            }
+      pendingMetersRef.current[id] = { level, isSpeaking };
+      const now = performance.now();
+      if (now - lastMeterFlushRef.current >= 50) {
+        lastMeterFlushRef.current = now;
+        flushPendingMeters();
+      } else if (!meterRafIdRef.current) {
+        meterRafIdRef.current = requestAnimationFrame(() => {
+          meterRafIdRef.current = null;
+          if (performance.now() - lastMeterFlushRef.current >= 50) {
+            lastMeterFlushRef.current = performance.now();
+            flushPendingMeters();
           }
-        };
-      });
+        });
+      }
     });
 
     // WebRTC peer joining: Host creates peer connection and awaits offer
@@ -296,14 +332,15 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
     });
 
     return () => {
+      if (meterRafIdRef.current) cancelAnimationFrame(meterRafIdRef.current);
       socket.off('session:state');
       socket.off('participant:audio_meter');
       socket.off('webrtc:peer_joined');
       socket.off('webrtc:signal');
     };
-  }, [socket, hostAudio]);
+  }, [socket, hostAudio, flushPendingMeters]);
 
-  // Keyboard Hotkeys: 1 -> Select MIC 01, 2 -> Select MIC 02, 3 -> Select MIC 03, Space -> Mute All
+  // Keyboard Hotkeys: 1 -> Select MIC 01, 2 -> Select MIC 02, 3 -> Select MIC 03
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -320,50 +357,48 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [session]);
 
-  // Admin Actions
-  const handleSelectMic = (participantId: string | null) => {
+  // Stable Admin Actions
+  const handleSelectMic = useCallback((participantId: string | null) => {
     hostAudio.initAudio();
     socket?.emit('admin:select_mic', { participantId });
-  };
+  }, [socket, hostAudio]);
 
-  const handleToggleMode = (mode: 'manual' | 'auto') => {
+  const handleToggleMode = useCallback((mode: 'manual' | 'auto') => {
     socket?.emit('admin:set_mode', { mode });
-  };
+  }, [socket]);
 
-  const handleToggleMuteParticipant = (participantId: string, muted: boolean) => {
+  const handleToggleMuteParticipant = useCallback((participantId: string, muted: boolean) => {
     socket?.emit('admin:mute_participant', { participantId, muted });
-  };
+  }, [socket]);
 
-  const handleToggleMuteAll = () => {
+  const handleToggleMuteAll = useCallback(() => {
     if (!session) return;
     const nextMuteAll = !session.isMuteAll;
     socket?.emit('admin:mute_all', { isMuteAll: nextMuteAll });
-  };
+  }, [socket, session?.isMuteAll]);
 
-  const handleEmergencyStop = () => {
+  const handleEmergencyStop = useCallback(() => {
     if (!session) return;
     const nextStop = !session.isEmergencyStop;
     socket?.emit('admin:emergency_stop', { isEmergencyStop: nextStop });
-  };
+  }, [socket, session?.isEmergencyStop]);
 
-  const handleChangePriority = (participantId: string, priority: PriorityLevel) => {
+  const handleChangePriority = useCallback((participantId: string, priority: PriorityLevel) => {
     socket?.emit('admin:set_priority', { participantId, priority });
-  };
+  }, [socket]);
 
-  const handleKickParticipant = (participantId: string) => {
+  const handleKickParticipant = useCallback((participantId: string) => {
     if (confirm('Disconnect participant from audio bus?')) {
       socket?.emit('admin:kick_participant', { participantId });
       hostAudio.closePeerConnection(participantId);
     }
-  };
+  }, [socket, hostAudio]);
 
-  const handleUpdateConfig = (config: Partial<ArbitrationConfig>) => {
+  const handleUpdateConfig = useCallback((config: Partial<ArbitrationConfig>) => {
     socket?.emit('admin:update_config', config);
-  };
+  }, [socket]);
 
-  // Virtual test participant injector for testing multi-mic arbitration without multiple phones
   const handleInjectVirtualParticipant = (name: string, priority: PriorityLevel) => {
-    // Generate simulated participant
     const virtualSocket = {
       sessionId,
       name,
@@ -396,124 +431,120 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
     return true;
   });
 
-  // Quick bus slots (MIC 01, MIC 02, MIC 03)
-  const quickSlots = [1, 2, 3].map(chNum => {
-    const found = participants.find(p => p.channelNumber === chNum);
-    return {
-      channelNumber: chNum,
-      participant: found || null
-    };
-  });
+  const navigationTabs = [
+    { id: 'control', label: 'CONTROL ROOM', shortLabel: 'CONTROL', icon: Activity, badge: null },
+    { id: 'mics', label: 'MICROPHONES', shortLabel: 'MICS', icon: Radio, badge: participants.length > 0 ? String(participants.length) : null },
+    { id: 'auto', label: 'AUTO ARBITRATION', shortLabel: 'AUTO', icon: Cpu, badge: session?.mode === 'auto' ? 'AUTO' : null },
+    { id: 'output', label: 'AUDIO OUTPUT / PA', shortLabel: 'OUTPUT', icon: Volume2, badge: session?.isEmergencyStop ? 'STOP' : session?.isMuteAll ? 'MUTE' : null },
+    { id: 'diagnostics', label: 'DIAGNOSTICS & SIM', shortLabel: 'DIAGS', icon: Settings, badge: null },
+  ] as const;
 
   return (
-    <div className="min-h-screen bg-transparent text-text-primary flex flex-col font-body relative">
+    <div className="min-h-screen bg-transparent text-text-primary flex flex-col font-body relative overflow-x-hidden">
       {/* ===================== TOP AUTOPLAY UNLOCK BANNER ===================== */}
       {audioEngineState !== 'running' && (
-        <div className="bg-bg-secondary text-text-primary px-4 py-2 border-b border-border flex items-center justify-between text-xs font-mono font-bold z-50 shadow-md">
-          <div className="flex items-center gap-2 text-accent-blue">
+        <div className="bg-bg-secondary text-text-primary px-3 sm:px-4 py-2 border-b border-border flex items-center justify-between text-xs font-mono font-bold z-50 shadow-md">
+          <div className="flex items-center gap-2 text-accent-blue truncate mr-2">
             <VolumeX size={15} className="shrink-0" />
-            <span>PA SPEAKER OUTPUT MUTED // BROWSER AUTOPLAY RESTRICTION ACTIVE</span>
+            <span className="truncate">PA OUTPUT MUTED // CLICK TO UNMUTE</span>
           </div>
           <button
             onClick={handleEngageAudio}
-            className="px-3.5 py-1.5 bg-accent-blue text-white uppercase text-[11px] btn-tactile hover:bg-accent-blue-hover font-bold flex items-center gap-1.5 shadow-sm rounded-lg transition-colors"
+            className="px-3 py-1 bg-accent-blue text-white uppercase text-[11px] btn-tactile hover:bg-accent-blue-hover font-bold flex items-center gap-1.5 shadow-sm rounded-lg transition-colors shrink-0"
           >
             <Volume2 size={12} />
-            <span>CLICK TO ENGAGE PA SPEAKERS</span>
+            <span>ENGAGE PA</span>
           </button>
         </div>
       )}
 
-      {/* ===================== TOP HEADER ===================== */}
-      <header className="bg-bg-secondary/90 backdrop-blur-md border-b border-border px-4 h-14 flex items-center justify-between select-none gap-3 overflow-x-auto no-scrollbar">
-        {/* Left Wordmark & Session Info */}
-        <div className="flex items-center gap-3.5 flex-shrink-0">
-          <div className="flex items-center gap-2.5 cursor-pointer group" onClick={onGoHome} title="Go to Home Dashboard">
+      {/* ===================== TOP HEADER: PIXEL-PERFECT ALIGNED & RESPONSIVE ===================== */}
+      <header className="bg-bg-secondary/95 backdrop-blur-md border-b border-border px-3 sm:px-4 h-14 flex items-center justify-between select-none z-30 flex-shrink-0 gap-2">
+        {/* Left: Brand Mark & Session Badge */}
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <div 
+            className="flex items-center gap-2 cursor-pointer group" 
+            onClick={onGoHome} 
+            title="Go to Home Dashboard"
+          >
             <div className="w-8 h-8 rounded-lg bg-bg-card border border-border text-accent-blue flex items-center justify-center font-bold shadow-sm group-hover:border-accent-blue/50 transition-colors flex-shrink-0">
-              <Radio size={16} className="animate-pulse" />
+              <Radio size={15} className="animate-pulse" />
             </div>
-            <h1 className="font-heading font-black text-lg tracking-widest uppercase text-text-primary whitespace-nowrap">
+            <h1 className="font-heading font-black text-sm sm:text-base tracking-wider uppercase text-text-primary whitespace-nowrap">
               MICRO MAX
             </h1>
           </div>
-          <div className="h-5 w-px bg-border flex-shrink-0" />
-          <div className="flex items-center gap-2 text-xs font-mono whitespace-nowrap flex-shrink-0">
-            <span className="text-text-muted text-[11px]">SESSION:</span>
-            <span className="font-bold text-text-primary text-xs">{sessionId}</span>
-            <span className="h-6 px-2.5 flex items-center border border-border text-[10px] text-accent-blue bg-bg-card rounded-md font-mono whitespace-nowrap">
-              {session?.sessionName || 'MAIN BROADCAST STAGE'}
+
+          <div className="h-5 w-px bg-border hidden sm:block flex-shrink-0" />
+
+          {/* Unified Session & Broadcast Stage Badge */}
+          <div className="h-8 px-2 sm:px-2.5 rounded-lg bg-bg-card border border-border flex items-center gap-1.5 text-xs font-mono whitespace-nowrap flex-shrink-0">
+            <span className="text-text-muted text-[10px] hidden sm:inline">SESSION:</span>
+            <span className="font-bold text-text-primary text-[11px] sm:text-xs">{sessionId}</span>
+            <span className="text-border mx-0.5 hidden md:inline">|</span>
+            <span className="text-[10px] text-accent-blue font-semibold hidden md:inline truncate max-w-[140px]">
+              {session?.sessionName || 'STAGE'}
             </span>
           </div>
         </div>
 
-        {/* Center Indicators: Strictly Aligned Single-Line Badges */}
-        <div className="hidden xl:flex items-center gap-3.5 text-xs font-mono flex-shrink-0">
+        {/* Center: Desktop Badges (Strict h-8 Height) */}
+        <div className="hidden lg:flex items-center gap-2 text-xs font-mono flex-shrink-0">
           {/* Live PA Output Status Button */}
           <button
             onClick={handleEngageAudio}
             title="Click to toggle or test PA output chime"
-            className={`h-8 px-3 border rounded-lg cursor-pointer transition-colors flex items-center gap-2 whitespace-nowrap flex-shrink-0 btn-tactile ${
+            className={`h-8 px-2.5 border rounded-lg cursor-pointer transition-colors flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 btn-tactile ${
               audioEngineState === 'running'
                 ? 'border-emerald-500/40 bg-emerald-950/20 hover:bg-emerald-950/40'
                 : 'border-yellow-500/40 bg-yellow-950/20 hover:bg-yellow-950/40'
             }`}
           >
-            {audioEngineState === 'running' ? (
-              <>
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
-                <span className="text-emerald-300 font-bold text-[11px] tracking-wide whitespace-nowrap">
-                  PA OUTPUT LIVE
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0" />
-                <span className="text-yellow-300 font-bold text-[11px] tracking-wide whitespace-nowrap">
-                  PA MUTED (CLICK TO UNMUTE)
-                </span>
-              </>
-            )}
+            <span className={`w-2 h-2 rounded-full ${audioEngineState === 'running' ? 'bg-emerald-400 animate-pulse' : 'bg-yellow-400'}`} />
+            <span className={`font-bold text-[10px] tracking-wide whitespace-nowrap ${audioEngineState === 'running' ? 'text-emerald-300' : 'text-yellow-300'}`}>
+              {audioEngineState === 'running' ? 'PA LIVE' : 'PA MUTED'}
+            </span>
           </button>
 
           {/* LAN IP Badge */}
           <div className="h-8 px-2.5 rounded-lg bg-bg-card border border-border flex items-center gap-1.5 whitespace-nowrap flex-shrink-0">
-            <Wifi size={13} className="text-accent-blue flex-shrink-0" />
-            <span className="text-text-muted text-[11px]">LAN IP:</span>
-            <span className="font-semibold text-text-primary text-xs">{localIp}:5173</span>
+            <Wifi size={12} className="text-accent-blue flex-shrink-0" />
+            <span className="text-text-muted text-[10px]">LAN:</span>
+            <span className="font-semibold text-text-primary text-[11px]">{localIp}:5173</span>
           </div>
 
           {/* Connected Units Badge */}
           <div className="h-8 px-2.5 rounded-lg bg-bg-card border border-border flex items-center gap-1.5 whitespace-nowrap flex-shrink-0">
-            <Users size={13} className="text-accent-blue flex-shrink-0" />
-            <span className="text-text-muted text-[11px]">UNITS:</span>
-            <span className="font-semibold text-text-primary text-xs">{participants.length} CONNECTED</span>
+            <Users size={12} className="text-accent-blue flex-shrink-0" />
+            <span className="text-text-muted text-[10px]">UNITS:</span>
+            <span className="font-semibold text-text-primary text-[11px]">{participants.length}</span>
           </div>
 
           {/* Engine Mode Badge */}
           <div className="h-8 px-2.5 rounded-lg bg-bg-card border border-border flex items-center gap-1.5 whitespace-nowrap flex-shrink-0">
-            <Cpu size={13} className="text-accent-blue flex-shrink-0" />
-            <span className="text-text-muted text-[11px]">ENGINE:</span>
-            <span className={`font-semibold text-xs uppercase ${session?.mode === 'auto' ? 'text-accent-blue font-bold' : 'text-text-secondary'}`}>
+            <Cpu size={12} className="text-accent-blue flex-shrink-0" />
+            <span className="text-text-muted text-[10px]">ENGINE:</span>
+            <span className={`font-semibold text-[11px] uppercase ${session?.mode === 'auto' ? 'text-accent-blue font-bold' : 'text-text-secondary'}`}>
               {session?.mode || 'MANUAL'}
             </span>
           </div>
         </div>
 
-        {/* Right Session Controls: Uniform h-8 Height Buttons */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Responsive PA indicator for screens narrower than xl */}
-          <div className="xl:hidden flex items-center">
+        {/* Right: Action Buttons (Strict h-8 Uniform Heights) */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          {/* Mobile PA indicator badge */}
+          <div className="lg:hidden flex items-center">
             <button
               onClick={handleEngageAudio}
-              className={`h-8 px-2.5 border rounded-lg cursor-pointer transition-colors flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
+              className={`h-8 px-2 border rounded-lg cursor-pointer transition-colors flex items-center gap-1 whitespace-nowrap flex-shrink-0 ${
                 audioEngineState === 'running'
                   ? 'border-emerald-500/40 bg-emerald-950/20 text-emerald-300'
                   : 'border-yellow-500/40 bg-yellow-950/20 text-yellow-300'
               }`}
             >
               <span className={`w-2 h-2 rounded-full ${audioEngineState === 'running' ? 'bg-emerald-400 animate-pulse' : 'bg-yellow-400'}`} />
-              <span className="text-[10px] font-mono font-bold">
-                {audioEngineState === 'running' ? 'PA LIVE' : 'PA MUTED'}
+              <span className="text-[10px] font-mono font-bold hidden xs:inline">
+                {audioEngineState === 'running' ? 'PA LIVE' : 'PA OFF'}
               </span>
             </button>
           </div>
@@ -521,79 +552,76 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
           {onGoHome && (
             <button
               onClick={onGoHome}
-              className="h-8 px-3 bg-bg-card border border-border text-xs font-mono text-text-secondary hover:text-text-primary hover:border-border-hover rounded-lg btn-tactile flex items-center gap-1.5 transition-colors whitespace-nowrap flex-shrink-0"
+              className="h-8 px-2.5 bg-bg-card border border-border text-xs font-mono text-text-secondary hover:text-text-primary hover:border-border-hover rounded-lg btn-tactile flex items-center gap-1.5 transition-colors whitespace-nowrap flex-shrink-0"
               title="Return to Home Dashboard"
             >
               <Home size={13} className="flex-shrink-0" />
-              <span className="whitespace-nowrap">HOME</span>
+              <span className="whitespace-nowrap hidden sm:inline">HOME</span>
             </button>
           )}
 
-          {/* QR Code Join Modal Button */}
+          {/* Connect Phones (QR Code) Button */}
           <button
             onClick={() => {
               setQrChannelNumber(undefined);
               setIsQRModalOpen(true);
             }}
-            className="h-8 px-3 bg-bg-card border border-border text-xs font-mono text-text-primary hover:border-border-hover hover:text-white rounded-lg btn-tactile flex items-center gap-1.5 transition-colors whitespace-nowrap flex-shrink-0"
+            className="h-8 px-2.5 sm:px-3 bg-bg-card border border-border text-xs font-mono text-text-primary hover:border-border-hover hover:text-white rounded-lg btn-tactile flex items-center gap-1.5 transition-colors whitespace-nowrap flex-shrink-0"
+            title="Scan QR Code to connect phones"
           >
             <QrCode size={13} className="flex-shrink-0 text-accent-blue" />
-            <span className="whitespace-nowrap">CONNECT PHONES</span>
+            <span className="whitespace-nowrap hidden md:inline">CONNECT PHONES</span>
           </button>
 
           {/* Mute All Toggle */}
           <button
             onClick={handleToggleMuteAll}
-            className={`h-8 px-3 text-xs font-mono font-bold tracking-wider uppercase border rounded-lg btn-tactile flex items-center gap-1.5 transition-colors whitespace-nowrap flex-shrink-0 ${
+            className={`h-8 px-2.5 sm:px-3 text-xs font-mono font-bold tracking-wider uppercase border rounded-lg btn-tactile flex items-center gap-1.5 transition-colors whitespace-nowrap flex-shrink-0 ${
               session?.isMuteAll
                 ? 'bg-red-950/60 text-red-300 border-red-500/50'
                 : 'bg-bg-card text-text-primary border-border hover:border-border-hover'
             }`}
+            title={session?.isMuteAll ? 'Unmute all channels' : 'Silence all microphones'}
           >
             <VolumeX size={13} className="flex-shrink-0" />
-            <span className="whitespace-nowrap">{session?.isMuteAll ? 'ALL MUTED' : 'MUTE ALL'}</span>
+            <span className="whitespace-nowrap hidden sm:inline">{session?.isMuteAll ? 'ALL MUTED' : 'MUTE ALL'}</span>
           </button>
 
           {/* Emergency Stop Hard Cut */}
           <button
             onClick={handleEmergencyStop}
-            className={`h-8 px-3.5 text-xs font-mono font-black tracking-widest uppercase border rounded-lg btn-tactile flex items-center gap-1.5 transition-colors whitespace-nowrap flex-shrink-0 ${
+            className={`h-8 px-2.5 sm:px-3 text-xs font-mono font-black tracking-wider uppercase border rounded-lg btn-tactile flex items-center gap-1.5 transition-colors whitespace-nowrap flex-shrink-0 ${
               session?.isEmergencyStop
                 ? 'bg-red-600 text-white border-red-500 ring-2 ring-red-400/40 animate-pulse'
                 : 'bg-bg-card text-red-400 border-red-500/60 hover:bg-red-500 hover:text-white'
             }`}
+            title="Immediate emergency audio cutoff"
           >
-            <AlertOctagon size={14} className="flex-shrink-0" />
-            <span className="whitespace-nowrap">{session?.isEmergencyStop ? 'STOPPED' : 'EMERGENCY STOP'}</span>
+            <AlertOctagon size={13} className="flex-shrink-0" />
+            <span className="whitespace-nowrap">{session?.isEmergencyStop ? 'STOPPED' : 'STOP'}</span>
           </button>
         </div>
       </header>
 
-      {/* ===================== WORKSPACE LAYOUT ===================== */}
+      {/* ===================== WORKSPACE CONTAINER ===================== */}
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Antigravity Ambient Glow & Dotted Halftone Texture */}
+        {/* Antigravity Ambient Glow & Halftone Texture */}
         <div className="absolute inset-0 antigravity-glow pointer-events-none" />
         <div className="absolute inset-0 antigravity-halftone pointer-events-none" />
 
-        {/* ===================== LEFT SIDEBAR ===================== */}
-        <nav className="relative z-10 w-56 bg-bg-secondary/70 backdrop-blur-sm border-r border-border flex flex-col p-3 gap-1 select-none">
+        {/* ===================== DESKTOP LEFT SIDEBAR (HIDDEN ON MOBILE/TABLET) ===================== */}
+        <nav className="relative z-10 w-56 bg-bg-secondary/70 backdrop-blur-sm border-r border-border hidden lg:flex flex-col p-3 gap-1 select-none flex-shrink-0">
           <div className="text-[10px] font-mono text-text-muted uppercase tracking-widest px-2 py-1 mb-1 font-bold">
             CONSOLE NAVIGATION
           </div>
 
-          {[
-            { id: 'control', label: 'CONTROL ROOM', icon: Activity, badge: null },
-            { id: 'mics', label: 'MICROPHONES', icon: Radio, badge: participants.length > 0 ? String(participants.length) : null },
-            { id: 'auto', label: 'AUTO ARBITRATION', icon: Cpu, badge: session?.mode === 'auto' ? 'AUTO' : null },
-            { id: 'output', label: 'AUDIO OUTPUT / PA', icon: Volume2, badge: session?.isEmergencyStop ? 'STOP' : session?.isMuteAll ? 'MUTE' : null },
-            { id: 'diagnostics', label: 'DIAGNOSTICS & SIM', icon: Settings, badge: null },
-          ].map((item) => {
+          {navigationTabs.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
-                onClick={() => handleTabChange(item.id as any)}
+                onClick={() => handleTabChange(item.id)}
                 className={`w-full text-left px-3 py-2 text-xs font-mono tracking-wider flex items-center justify-between rounded-lg border transition-all ${
                   isActive
                     ? 'bg-bg-card border-accent-blue text-accent-blue font-bold shadow-sm'
@@ -646,69 +674,75 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
         </nav>
 
         {/* ===================== MAIN CENTER WORKSPACE ===================== */}
-        <main className="relative z-10 flex-1 flex flex-col p-4 gap-4 overflow-y-auto">
+        <main className="relative z-10 flex-1 flex flex-col p-3 sm:p-4 md:p-6 gap-4 overflow-y-auto overflow-x-hidden w-full max-w-full pb-24 lg:pb-6">
 
           {/* ============================================================== */}
-          {/* TAB 1: CONTROL ROOM (4 PRIMARY SECTIONS)                       */}
+          {/* TAB 1: CONTROL ROOM (RECOMMENDED MOBILE ARCHITECTURE)           */}
           {/* ============================================================== */}
           {activeTab === 'control' && (
-            <div className="flex flex-col gap-5">
-              {/* ==================== 1. SESSION SECTION ==================== */}
-              <section className="p-5 bg-bg-card border border-border rounded-2xl shadow-xl shadow-black/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-xl bg-bg-secondary border border-border text-accent-blue flex items-center justify-center font-bold shadow-sm">
+            <div className="flex flex-col gap-4 sm:gap-5 w-full max-w-full">
+              
+              {/* 1. HERO SPEAKER STATUS BANNER */}
+              <section className="p-4 sm:p-5 bg-bg-card border border-border rounded-2xl shadow-xl shadow-black/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 w-full">
+                <div className="flex items-center gap-3">
+                  <div className={`w-11 h-11 rounded-xl bg-bg-secondary border border-border flex items-center justify-center font-bold shadow-sm shrink-0 ${
+                    activeSpeaker ? 'text-accent-blue border-accent-blue/50' : 'text-text-muted'
+                  }`}>
                     <Radio size={20} className={activeSpeaker ? 'animate-pulse' : ''} />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-[10px] font-mono text-text-muted uppercase tracking-wider font-semibold">
-                      ACTIVE SESSION
+                      CURRENT SPEAKER FLOOR
                     </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-heading font-black text-2xl tracking-wider text-text-primary">
-                        {sessionId}
-                      </span>
-                      <span className="text-xs font-mono text-text-secondary">
-                        ({session?.sessionName || 'STAGE BROADCAST'})
-                      </span>
+                    <div className="flex items-baseline gap-2 truncate">
+                      {activeSpeaker ? (
+                        <>
+                          <span className="font-heading font-black text-xl sm:text-2xl text-accent-blue tracking-wide">
+                            MIC {String(activeSpeaker.channelNumber).padStart(2, '0')}
+                          </span>
+                          <span className="text-xs sm:text-sm font-semibold text-text-primary truncate">
+                            {activeSpeaker.name}
+                          </span>
+                          <span className="text-[10px] font-mono text-text-muted">
+                            ({activeSpeaker.priority})
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-heading font-bold text-lg sm:text-xl text-text-muted">
+                          ALL MICROPHONES STANDBY
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center flex-wrap gap-2.5">
-                  {/* Connected Phone Count */}
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-bg-secondary border border-border rounded-lg font-mono text-xs">
-                    <span className={`w-2 h-2 rounded-full ${participants.length > 0 ? 'bg-accent-blue animate-pulse' : 'bg-text-muted'}`} />
-                    <span className="font-bold text-text-primary">
-                      {participants.length} Phone{participants.length === 1 ? '' : 's'} Connected
-                    </span>
-                  </div>
-
-                  {/* Copy Link Button */}
-                  <button
-                    onClick={handleCopyLink}
-                    className="px-3 py-1.5 bg-bg-secondary border border-border text-xs font-mono text-text-primary hover:border-border-hover hover:text-white rounded-lg btn-tactile flex items-center gap-1.5 transition-colors"
-                    title="Copy direct join link to clipboard"
-                  >
-                    {copiedLink ? <Check size={13} className="text-accent-blue" /> : <Copy size={13} />}
-                    <span>{copiedLink ? 'COPIED!' : 'COPY JOIN LINK'}</span>
-                  </button>
-
-                  {/* Connect Phones (QR Code) Button */}
+                <div className="flex items-center flex-wrap gap-2 w-full sm:w-auto justify-end">
+                  {/* Connect phone button */}
                   <button
                     onClick={() => {
                       setQrChannelNumber(undefined);
                       setIsQRModalOpen(true);
                     }}
-                    className="px-3.5 py-1.5 bg-accent-blue text-white font-mono font-semibold text-xs uppercase rounded-lg hover:bg-accent-blue-hover btn-tactile flex items-center gap-1.5 shadow-blue-glow transition-all active:scale-[0.99]"
+                    className="flex-1 sm:flex-none px-3 py-2 bg-accent-blue text-white font-mono font-semibold text-xs uppercase rounded-lg hover:bg-accent-blue-hover btn-tactile flex items-center justify-center gap-1.5 shadow-blue-glow transition-all"
                   >
                     <QrCode size={14} />
-                    <span>SHOW QR CODE</span>
+                    <span>CONNECT MIC</span>
+                  </button>
+
+                  {/* Copy Link Button */}
+                  <button
+                    onClick={handleCopyLink}
+                    className="px-3 py-2 bg-bg-secondary border border-border text-xs font-mono text-text-primary hover:border-border-hover hover:text-white rounded-lg btn-tactile flex items-center justify-center gap-1.5 transition-colors"
+                    title="Copy direct join link to clipboard"
+                  >
+                    {copiedLink ? <Check size={13} className="text-accent-blue" /> : <Copy size={13} />}
+                    <span className="hidden sm:inline">{copiedLink ? 'COPIED!' : 'COPY LINK'}</span>
                   </button>
                 </div>
               </section>
 
-              {/* ==================== 2. MICROPHONE CONTROL ==================== */}
-              <section className="p-5 bg-bg-card border border-border rounded-2xl shadow-card space-y-4">
+              {/* 2. MICROPHONE CONTROL MATRIX */}
+              <section className="p-4 sm:p-5 bg-bg-card border border-border rounded-2xl shadow-card space-y-4 w-full">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border/80 gap-2">
                   <div>
                     <h3 className="font-heading font-black text-base uppercase tracking-wider text-text-primary flex items-center gap-2">
@@ -721,11 +755,11 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                       )}
                     </h3>
                     <p className="text-xs text-text-secondary mt-0.5">
-                      Click any microphone slot to switch the live speaker floor.
+                      Tap any microphone to grant floor broadcast.
                     </p>
                   </div>
 
-                  {/* Auto Mode Switch */}
+                  {/* Auto Mode Switch & Unroute */}
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleToggleMode(session?.mode === 'auto' ? 'manual' : 'auto')}
@@ -736,7 +770,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                       }`}
                     >
                       <Cpu size={13} className={session?.mode === 'auto' ? 'text-accent-blue' : ''} />
-                      <span>{session?.mode === 'auto' ? 'AUTO-SWITCHING: ON' : 'AUTO-SWITCHING: OFF'}</span>
+                      <span>{session?.mode === 'auto' ? 'AUTO: ON' : 'AUTO: OFF'}</span>
                     </button>
                     {activeSpeaker && (
                       <button
@@ -757,13 +791,13 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                     { id: 'active', label: `ON AIR (${activeSpeaker ? 1 : 0})` },
                     { id: 'ready', label: `READY (${readyCount})` },
                     { id: 'muted', label: `MUTED (${mutedCount})` },
-                    { id: 'weak', label: `WEAK WI-FI (${weakCount})` },
+                    { id: 'weak', label: `WEAK (${weakCount})` },
                     { id: 'vip', label: `VIP (${vipCount})` }
                   ].map((tab) => (
                     <button
                       key={tab.id}
                       onClick={() => setMicFilter(tab.id as any)}
-                      className={`px-3 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
+                      className={`px-2.5 sm:px-3 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
                         micFilter === tab.id
                           ? 'bg-accent-blue text-white border-accent-blue shadow-sm font-bold'
                           : 'bg-bg-secondary text-text-secondary border-border hover:border-border-hover hover:text-text-primary'
@@ -774,8 +808,8 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                   ))}
                 </div>
 
-                {/* Tactile Microphone Matrix (Scalable Grid supporting 10+ channels) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+                {/* Tactile Microphone Matrix: Fluid Grid (1 col mobile, 2 col tablet, 3-4 col desktop) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-3.5 w-full">
                   {/* Empty filter notice */}
                   {filteredParticipants.length === 0 && participants.length > 0 && (
                     <div className="col-span-full p-6 text-center text-xs text-text-muted font-mono bg-bg-main border border-border rounded-lg">
@@ -809,7 +843,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                     return (
                       <div
                         key={channelNumber}
-                        className="p-4 bg-bg-main border border-dashed border-border rounded-lg flex flex-col justify-between h-36 hover:border-text-secondary transition-colors"
+                        className="p-4 bg-bg-main border border-dashed border-border rounded-xl flex flex-col justify-between h-36 hover:border-text-secondary transition-colors"
                       >
                         <div className="flex justify-between items-center">
                           <span className="font-mono text-xs font-bold text-text-muted">{label}</span>
@@ -848,14 +882,14 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                       + CONNECT MIC {String(participants.length + 1).padStart(2, '0')}
                     </div>
                     <div className="text-[10px] text-text-muted font-mono">
-                      Scan QR or share link
+                      Scan QR or tap to pair
                     </div>
                   </div>
                 </div>
               </section>
 
-              {/* ==================== 3. AUDIO OUTPUT SECTION ==================== */}
-              <section className="p-5 bg-bg-card border border-border rounded-2xl shadow-card space-y-4">
+              {/* 3. AUDIO OUTPUT & MASTER PA VOLUME SECTION */}
+              <section className="p-4 sm:p-5 bg-bg-card border border-border rounded-2xl shadow-card space-y-4 w-full">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border/80 gap-2">
                   <div>
                     <h3 className="font-heading font-black text-base uppercase tracking-wider text-text-primary flex items-center gap-2">
@@ -863,7 +897,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                       <span>AUDIO OUTPUT &amp; PA SPEAKERS</span>
                     </h3>
                     <p className="text-xs text-text-secondary mt-0.5">
-                      Verify sound output, adjust master room volume, or silence all channels.
+                      Master room volume, output testing, and PA speaker control.
                     </p>
                   </div>
 
@@ -884,14 +918,12 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-                  {/* Master Hardware VU Meter */}
+                  {/* Master Hardware VU Meter (Isolated rendering for zero parent CPU usage) */}
                   <div className="p-3.5 bg-bg-secondary border border-border rounded-xl">
-                    <RetroVUMeter
-                      level={session?.isEmergencyStop || session?.isMuteAll ? 0 : masterAudioLevel}
-                      segments={22}
-                      height="h-5"
-                      showLabels={true}
-                      label="MASTER PA OUTPUT LEVEL"
+                    <MasterVUMeter
+                      hostAudio={hostAudio}
+                      isMuted={!!(session?.isEmergencyStop || session?.isMuteAll)}
+                      activeSpeakerAudioLevel={activeSpeaker?.audioLevel}
                     />
                   </div>
 
@@ -907,7 +939,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                       max={100}
                       value={masterVolume}
                       onChange={(e) => handleMasterVolumeChange(Number(e.target.value))}
-                      className="w-full accent-[#3478F6] bg-bg-card h-1.5 rounded-lg cursor-pointer"
+                      className="w-full accent-[#3478F6] bg-bg-card h-2 rounded-lg cursor-pointer"
                     />
                   </div>
 
@@ -918,15 +950,15 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                         await hostAudio.initAudio();
                         hostAudio.playTestChime();
                       }}
-                      className="flex-1 py-3 px-3 bg-accent-blue text-white font-mono text-xs font-semibold uppercase rounded-lg hover:bg-accent-blue-hover btn-tactile flex items-center justify-center gap-1.5 shadow-blue-glow transition-all active:scale-[0.99]"
+                      className="flex-1 py-3 px-3 bg-accent-blue text-white font-mono text-xs font-semibold uppercase rounded-lg hover:bg-accent-blue-hover btn-tactile flex items-center justify-center gap-1.5 shadow-blue-glow transition-all active:scale-[0.99] min-h-[44px]"
                     >
                       <Volume2 size={14} />
-                      <span>PLAY TEST CHIME</span>
+                      <span>PLAY CHIME</span>
                     </button>
 
                     <button
                       onClick={handleToggleMuteAll}
-                      className={`flex-1 py-3 px-3 border font-mono text-xs font-semibold uppercase rounded-lg btn-tactile flex items-center justify-center gap-1.5 transition-colors ${
+                      className={`flex-1 py-3 px-3 border font-mono text-xs font-semibold uppercase rounded-lg btn-tactile flex items-center justify-center gap-1.5 transition-colors min-h-[44px] ${
                         session?.isMuteAll
                           ? 'bg-red-950/60 text-red-300 border-red-500/50'
                           : 'bg-bg-secondary text-text-primary border-border hover:border-border-hover'
@@ -939,8 +971,76 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                 </div>
               </section>
 
-              {/* ==================== 4. PARTICIPANTS SECTION ==================== */}
-              <section className="p-5 bg-bg-card border border-border rounded-2xl shadow-xl shadow-black/40 space-y-3">
+              {/* 4. ARBITRATION STATUS & QUEUE (VISIBLE EMBEDDED ON MOBILE/TABLET WHEN XL ASIDE IS HIDDEN) */}
+              <div className="xl:hidden grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                {/* Status Box */}
+                <div className="bg-bg-card border border-border p-4 rounded-xl space-y-2 text-xs font-mono shadow-card">
+                  <div className="text-[10px] text-text-muted uppercase tracking-widest font-bold pb-1.5 border-b border-border">
+                    ARBITRATION ENGINE STATUS
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">Floor Speaker:</span>
+                    <span className="font-bold text-accent-blue">
+                      {activeSpeaker ? `MIC ${String(activeSpeaker.channelNumber).padStart(2, '0')} (${activeSpeaker.name})` : 'STANDBY'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">Decision Reason:</span>
+                    <span className="text-text-primary truncate max-w-[160px]">
+                      {session?.selectionReason || 'INITIAL_IDLE'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">Arbitration Mode:</span>
+                    <span className="text-text-primary font-bold uppercase">
+                      {session?.mode || 'MANUAL'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Contenders Queue */}
+                <div className="bg-bg-card border border-border p-4 rounded-xl space-y-2 text-xs font-mono shadow-card">
+                  <div className="text-[10px] text-text-muted uppercase tracking-widest font-bold pb-1.5 border-b border-border flex justify-between">
+                    <span>CONTENDERS QUEUE</span>
+                    <span>PRIORITY</span>
+                  </div>
+                  {participants.length === 0 ? (
+                    <div className="text-[11px] text-text-muted">No mobile handsets connected</div>
+                  ) : (
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                      {participants
+                        .slice()
+                        .sort((a, b) => (b.priority === 'VIP' ? 1 : 0) - (a.priority === 'VIP' ? 1 : 0))
+                        .map((p) => {
+                          const isActive = session?.activeSpeakerId === p.id;
+                          return (
+                            <div
+                              key={p.id}
+                              className={`flex items-center justify-between p-1.5 rounded-lg border text-[11px] ${
+                                isActive
+                                  ? 'bg-bg-secondary text-accent-blue font-bold border-accent-blue/50'
+                                  : 'bg-bg-card text-text-secondary border-border'
+                              }`}
+                            >
+                              <span className="truncate max-w-[140px]">
+                                MIC {String(p.channelNumber).padStart(2, '0')} {p.name}
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                {p.isSpeaking && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-accent-blue animate-pulse" />
+                                )}
+                                <span>{p.priority}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 5. CONNECTED PARTICIPANTS TABLE */}
+              <section className="p-4 sm:p-5 bg-bg-card border border-border rounded-2xl shadow-xl shadow-black/40 space-y-3 w-full">
                 <div className="flex items-center justify-between pb-3 border-b border-border/80">
                   <h3 className="font-heading font-black text-base uppercase tracking-wider text-text-primary flex items-center gap-2">
                     <Users size={16} />
@@ -953,12 +1053,12 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                     }}
                     className="text-xs font-mono text-text-primary hover:underline flex items-center gap-1 font-bold"
                   >
-                    <span>+ Invite More</span>
+                    <span>+ Invite Handset</span>
                   </button>
                 </div>
 
                 {participants.length === 0 ? (
-                  <div className="p-8 text-center bg-bg-main/60 border border-dashed border-border rounded-xl space-y-3">
+                  <div className="p-6 sm:p-8 text-center bg-bg-main/60 border border-dashed border-border rounded-xl space-y-3">
                     <Smartphone size={32} className="mx-auto text-text-muted opacity-60" />
                     <p className="text-sm text-text-secondary font-mono">
                       No mobile microphones connected yet.
@@ -974,15 +1074,15 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                     </button>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto w-full">
                     <table className="w-full text-left font-mono text-xs">
                       <thead>
                         <tr className="border-b border-border text-text-muted text-[10px] uppercase">
-                          <th className="py-2.5 px-3 font-semibold">SLOT</th>
-                          <th className="py-2.5 px-3 font-semibold">NAME</th>
-                          <th className="py-2.5 px-3 font-semibold">STATUS</th>
-                          <th className="py-2.5 px-3 font-semibold">LIVE INPUT</th>
-                          <th className="py-2.5 px-3 text-right font-semibold">ACTIONS</th>
+                          <th className="py-2 px-2 sm:px-3 font-semibold">SLOT</th>
+                          <th className="py-2 px-2 sm:px-3 font-semibold">NAME</th>
+                          <th className="py-2 px-2 sm:px-3 font-semibold">STATUS</th>
+                          <th className="py-2 px-2 sm:px-3 font-semibold hidden sm:table-cell">LIVE INPUT</th>
+                          <th className="py-2 px-2 sm:px-3 text-right font-semibold">ACTIONS</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/40">
@@ -991,18 +1091,18 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                           const isMuted = p.isMutedByAdmin || p.isMutedSelf || session?.isMuteAll || session?.isEmergencyStop;
                           return (
                             <tr key={p.id} className={`hover:bg-bg-secondary/40 transition-colors ${isLive ? 'bg-bg-secondary/70 border-l-2 border-l-accent-blue' : ''}`}>
-                              <td className="py-3 px-3 font-bold text-text-primary">
+                              <td className="py-2.5 px-2 sm:px-3 font-bold text-text-primary whitespace-nowrap">
                                 MIC {String(p.channelNumber).padStart(2, '0')}
                               </td>
-                              <td className="py-3 px-3">
+                              <td className="py-2.5 px-2 sm:px-3 truncate max-w-[120px]">
                                 <span className="font-semibold text-text-primary">{p.name}</span>
-                                <span className="ml-2 text-[10px] text-text-muted">({p.priority})</span>
+                                <span className="ml-1 text-[10px] text-text-muted">({p.priority})</span>
                               </td>
-                              <td className="py-3 px-3">
+                              <td className="py-2.5 px-2 sm:px-3 whitespace-nowrap">
                                 {isLive ? (
-                                  <span className="text-accent-blue font-bold flex items-center gap-1.5">
+                                  <span className="text-accent-blue font-bold flex items-center gap-1">
                                     <span className="w-1.5 h-1.5 rounded-full bg-accent-blue animate-pulse" />
-                                    <span>LIVE ON AIR</span>
+                                    <span>LIVE</span>
                                   </span>
                                 ) : isMuted ? (
                                   <span className="text-text-muted font-bold">MUTED</span>
@@ -1010,7 +1110,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                                   <span className="text-text-secondary">STANDBY</span>
                                 )}
                               </td>
-                              <td className="py-3 px-3 w-40">
+                              <td className="py-2.5 px-2 sm:px-3 w-36 hidden sm:table-cell">
                                 <div className="h-2 bg-bg-secondary border border-border rounded-full overflow-hidden">
                                   <div
                                     className={`h-full transition-all duration-75 ${isLive ? 'bg-accent-blue' : 'bg-text-secondary'}`}
@@ -1018,29 +1118,29 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                                   />
                                 </div>
                               </td>
-                              <td className="py-3 px-3 text-right space-x-2">
+                              <td className="py-2.5 px-2 sm:px-3 text-right space-x-1 sm:space-x-2 whitespace-nowrap">
                                 <button
                                   onClick={() => handleSelectMic(isLive ? null : p.id)}
-                                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase transition-colors ${
+                                  className={`px-2 py-1 rounded-md text-[10px] sm:text-[11px] font-bold uppercase transition-colors ${
                                     isLive
                                       ? 'bg-bg-secondary text-text-secondary border border-border hover:text-white'
                                       : 'bg-accent-blue text-white hover:bg-accent-blue-hover'
                                   }`}
                                 >
-                                  {isLive ? 'UNROUTE' : 'MAKE LIVE'}
+                                  {isLive ? 'UNROUTE' : 'ROUTE'}
                                 </button>
                                 <button
                                   onClick={() => handleToggleMuteParticipant(p.id, !isMuted)}
-                                  className="px-2.5 py-1 bg-bg-secondary border border-border hover:border-border-hover rounded-md text-[11px] text-text-secondary hover:text-text-primary uppercase transition-colors"
+                                  className="px-2 py-1 bg-bg-secondary border border-border hover:border-border-hover rounded-md text-[10px] sm:text-[11px] text-text-secondary hover:text-text-primary uppercase transition-colors"
                                 >
                                   {isMuted ? 'UNMUTE' : 'MUTE'}
                                 </button>
                                 <button
                                   onClick={() => handleKickParticipant(p.id)}
-                                  className="px-2.5 py-1 bg-bg-secondary border border-border hover:border-red-400 rounded-md text-[11px] text-red-400 uppercase transition-colors"
+                                  className="px-1.5 py-1 bg-bg-secondary border border-border hover:border-red-400 rounded-md text-[10px] text-red-400 uppercase transition-colors hidden sm:inline-block"
                                   title="Disconnect handset"
                                 >
-                                  DISCONNECT
+                                  EJECT
                                 </button>
                               </td>
                             </tr>
@@ -1052,15 +1152,41 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                 )}
               </section>
 
-              {/* ==================== COLLAPSIBLE ADVANCED DIAGNOSTICS ==================== */}
-              <div className="bg-bg-card border border-border rounded-2xl overflow-hidden text-xs shadow-card">
+              {/* 6. COLLAPSIBLE SYSTEM LOG & DIAGNOSTICS */}
+              <div className="bg-bg-card border border-border rounded-2xl overflow-hidden text-xs shadow-card w-full">
+                <button
+                  onClick={() => setShowMobileSystemLog(!showMobileSystemLog)}
+                  className="w-full p-3.5 flex items-center justify-between text-text-secondary hover:text-text-primary font-mono font-bold uppercase tracking-wider bg-bg-secondary transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Terminal size={14} className="text-accent-blue" />
+                    <span>SYSTEM CHRONOLOGICAL LOG ({Math.min(50, (session?.recentEvents || []).length)})</span>
+                  </div>
+                  {showMobileSystemLog ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
+
+                {showMobileSystemLog && (
+                  <div className="p-3 border-t border-border max-h-48 overflow-y-auto space-y-1.5 font-mono text-[11px]">
+                    {(session?.recentEvents || []).slice(-50).map(evt => (
+                      <div key={evt.id} className="flex gap-2">
+                        <span className="text-text-muted shrink-0">[{evt.timestamp}]</span>
+                        <span className="font-bold text-text-primary shrink-0">{evt.message}</span>
+                        {evt.details && <span className="text-text-muted truncate">— {evt.details}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 7. ADVANCED ARBITRATION TUNING & SIMULATOR */}
+              <div className="bg-bg-card border border-border rounded-2xl overflow-hidden text-xs shadow-card w-full">
                 <button
                   onClick={() => setShowAdvancedDiagnostics(!showAdvancedDiagnostics)}
                   className="w-full p-3.5 flex items-center justify-between text-text-secondary hover:text-text-primary font-mono font-bold uppercase tracking-wider bg-bg-secondary transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <Settings size={14} className="text-accent-blue" />
-                    <span>ADVANCED SYSTEM DIAGNOSTICS &amp; TELEMETRY</span>
+                    <span>ADVANCED ARBITRATION TUNING &amp; SIMULATOR</span>
                   </div>
                   {showAdvancedDiagnostics ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </button>
@@ -1070,7 +1196,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                     {/* Auto Arbitration Timers */}
                     <div className="p-3 bg-bg-main border border-border rounded-lg space-y-2">
                       <div className="text-[11px] font-bold text-text-primary uppercase">
-                        ARBITRATION TUNING
+                        ARBITRATION TIMERS
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px]">
                         <div>
@@ -1127,32 +1253,19 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                         </button>
                       </div>
                     </div>
-
-                    {/* Network & Event Log */}
-                    <div className="p-3 bg-bg-main border border-border rounded-lg space-y-1.5 text-[11px]">
-                      <div className="text-[10px] text-text-muted uppercase">RECENT CONSOLE EVENTS</div>
-                      <div className="max-h-36 overflow-y-auto space-y-1 text-[10px] text-text-secondary">
-                        {(session?.recentEvents || []).slice(0, 10).map(evt => (
-                          <div key={evt.id} className="flex gap-2">
-                            <span className="text-text-muted">[{evt.timestamp}]</span>
-                            <span className="font-bold text-text-primary">{evt.message}</span>
-                            {evt.details && <span className="text-text-muted truncate">— {evt.details}</span>}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>
+
             </div>
           )}
 
           {/* ============================================================== */}
-          {/* TAB 2: MICROPHONES (TRANSMITTER CHANNEL RACK & MATRIX)         */}
+          {/* TAB 2: MICROPHONES (CHANNEL RACK & MATRIX)                     */}
           {/* ============================================================== */}
           {activeTab === 'mics' && (
-            <div className="flex flex-col gap-4">
-              {/* Page Title & Breadcrumb */}
+            <div className="flex flex-col gap-4 w-full max-w-full">
+              {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border gap-2">
                 <div>
                   <div className="text-[10px] font-mono text-text-muted uppercase tracking-widest font-bold">
@@ -1168,17 +1281,16 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                       setQrChannelNumber(undefined);
                       setIsQRModalOpen(true);
                     }}
-                    className="px-3 py-1.5 bg-text-primary text-text-inverse font-mono font-bold text-xs uppercase btn-tactile hover:bg-white/90 flex items-center gap-1.5"
+                    className="px-3 py-1.5 bg-accent-blue text-white font-mono font-bold text-xs uppercase btn-tactile hover:bg-accent-blue-hover flex items-center gap-1.5 rounded-lg shadow-blue-glow"
                   >
                     <QrCode size={13} />
-                    <span>+ PAIR MOBILE HANDSET</span>
+                    <span>+ PAIR HANDSET</span>
                   </button>
                 </div>
               </div>
 
-              {/* Filters & Batch Controls Bar */}
-              <div className="p-3 bg-bg-elevated border border-border rounded-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-3 font-mono text-xs">
-                {/* Filter Tabs */}
+              {/* Filters */}
+              <div className="p-3 bg-bg-card border border-border rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3 font-mono text-xs">
                 <div className="flex items-center gap-1 flex-wrap">
                   <span className="text-[10px] text-text-muted uppercase mr-1">FILTER:</span>
                   {[
@@ -1191,10 +1303,10 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                     <button
                       key={f.id}
                       onClick={() => setMicFilter(f.id as any)}
-                      className={`px-2.5 py-1 rounded-xs border transition-all ${
+                      className={`px-2.5 py-1 rounded-lg border transition-all ${
                         micFilter === f.id
-                          ? 'bg-text-primary text-text-inverse border-white font-bold'
-                          : 'bg-bg-main text-text-secondary border-border hover:text-text-primary'
+                          ? 'bg-accent-blue text-white border-accent-blue font-bold shadow-sm'
+                          : 'bg-bg-secondary text-text-secondary border-border hover:text-text-primary'
                       }`}
                     >
                       {f.label}
@@ -1202,14 +1314,13 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                   ))}
                 </div>
 
-                {/* Batch Actions */}
                 <div className="flex items-center gap-2 w-full md:w-auto justify-end">
                   <button
                     onClick={handleToggleMuteAll}
-                    className={`px-2.5 py-1 border text-xs uppercase btn-tactile ${
+                    className={`px-2.5 py-1 border text-xs uppercase btn-tactile rounded-lg ${
                       session?.isMuteAll
-                        ? 'bg-text-primary text-text-inverse border-white'
-                        : 'bg-bg-main text-text-primary border-border hover:border-text-primary'
+                        ? 'bg-red-950/60 text-red-300 border-red-500/50'
+                        : 'bg-bg-secondary text-text-primary border-border hover:border-border-hover'
                     }`}
                   >
                     {session?.isMuteAll ? 'UNMUTE ALL MICS' : 'MUTE ALL MICS'}
@@ -1218,16 +1329,16 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                   <button
                     onClick={() => handleSelectMic(null)}
                     disabled={!activeSpeaker}
-                    className="px-2.5 py-1 bg-bg-main border border-border text-xs uppercase text-text-secondary hover:text-text-primary hover:border-text-primary btn-tactile disabled:opacity-30 disabled:pointer-events-none"
+                    className="px-2.5 py-1 bg-bg-secondary border border-border text-xs uppercase text-text-secondary hover:text-text-primary rounded-lg btn-tactile disabled:opacity-30 disabled:pointer-events-none"
                   >
                     UNROUTE FLOOR
                   </button>
                 </div>
               </div>
 
-              {/* Handset Grid */}
+              {/* Handset Grid: Responsive Multi-Column */}
               {filteredParticipants.length === 0 ? (
-                <div className="p-12 bg-bg-card border border-border rounded-2xl shadow-card text-center flex flex-col items-center justify-center gap-3">
+                <div className="p-8 sm:p-12 bg-bg-card border border-border rounded-2xl shadow-card text-center flex flex-col items-center justify-center gap-3">
                   <Radio size={32} className="text-accent-blue animate-pulse" />
                   <div>
                     <h4 className="font-heading font-bold text-base tracking-wider uppercase text-text-primary">
@@ -1264,7 +1375,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                   {filteredParticipants.map((p) => {
                     const isSelected = session?.activeSpeakerId === p.id;
                     return (
@@ -1286,7 +1397,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
               )}
 
               {/* Rack Specs Footer */}
-              <div className="mt-auto p-3 bg-bg-secondary border border-border rounded-sm flex items-center justify-between text-[11px] font-mono text-text-muted">
+              <div className="mt-auto p-3 bg-bg-secondary border border-border rounded-xl flex items-center justify-between text-[11px] font-mono text-text-muted">
                 <span>CHANNEL CAPACITY: 32 BUS SLOTS ALLOCATED</span>
                 <span>AUDIO TRANSPORT: WEBRTC OPUS 48KHZ STEREO // LAN UDP</span>
               </div>
@@ -1297,8 +1408,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
           {/* TAB 3: AUTO ARBITRATION                                        */}
           {/* ============================================================== */}
           {activeTab === 'auto' && (
-            <div className="flex flex-col gap-4">
-              {/* Page Title & Breadcrumb */}
+            <div className="flex flex-col gap-4 w-full max-w-full">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border gap-2">
                 <div>
                   <div className="text-[10px] font-mono text-text-muted uppercase tracking-widest font-bold">
@@ -1331,7 +1441,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
               />
 
               {/* Priority Arbitration Rules Reference Card */}
-              <div className="bg-bg-card border border-border p-5 rounded-2xl shadow-card flex flex-col gap-3.5 font-mono text-xs">
+              <div className="bg-bg-card border border-border p-4 sm:p-5 rounded-2xl shadow-card flex flex-col gap-3.5 font-mono text-xs">
                 <div className="pb-2.5 border-b border-border">
                   <h3 className="font-heading font-bold text-sm tracking-wider uppercase text-text-primary">
                     ARBITRATION PREEMPTION &amp; TIMING SPECIFICATION
@@ -1371,8 +1481,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
           {/* TAB 4: AUDIO OUTPUT / PA SYSTEM                                */}
           {/* ============================================================== */}
           {activeTab === 'output' && (
-            <div className="flex flex-col gap-4">
-              {/* Page Title & Breadcrumb */}
+            <div className="flex flex-col gap-4 w-full max-w-full">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border gap-2">
                 <div>
                   <div className="text-[10px] font-mono text-text-muted uppercase tracking-widest font-bold">
@@ -1404,7 +1513,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
               />
 
               {/* Host Audio Signal Flow Schematic */}
-              <div className="bg-bg-card border border-border p-5 rounded-2xl shadow-card flex flex-col gap-2.5 font-mono text-xs">
+              <div className="bg-bg-card border border-border p-4 sm:p-5 rounded-2xl shadow-card flex flex-col gap-2.5 font-mono text-xs">
                 <div className="pb-1.5 border-b border-border text-[10px] text-accent-blue uppercase font-bold tracking-wider">
                   AUDIO SIGNAL GRAPH ROUTING SCHEMATIC
                 </div>
@@ -1429,8 +1538,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
           {/* TAB 5: DIAGNOSTICS & SIM                                       */}
           {/* ============================================================== */}
           {activeTab === 'diagnostics' && (
-            <div className="flex flex-col gap-4">
-              {/* Page Title & Breadcrumb */}
+            <div className="flex flex-col gap-4 w-full max-w-full">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-border gap-2">
                 <div>
                   <div className="text-[10px] font-mono text-text-muted uppercase tracking-widest font-bold">
@@ -1443,7 +1551,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => hostAudio.initAudio()}
-                    className="px-3 py-1.5 bg-bg-main border border-border text-text-primary hover:border-text-primary font-mono text-xs uppercase btn-tactile flex items-center gap-1.5"
+                    className="px-3 py-1.5 bg-bg-card border border-border text-text-primary hover:border-border-hover font-mono text-xs uppercase btn-tactile flex items-center gap-1.5 rounded-lg"
                   >
                     <RotateCcw size={12} />
                     <span>RESET AUDIO CONTEXT</span>
@@ -1452,7 +1560,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
               </div>
 
               {/* Link Health Telemetry Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 font-mono text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 font-mono text-xs">
                 <div className="p-4 bg-bg-card border border-border rounded-xl shadow-card flex flex-col gap-2">
                   <div className="flex items-center justify-between text-text-muted text-[10px] uppercase font-bold">
                     <span className="flex items-center gap-1.5 text-accent-blue">
@@ -1468,7 +1576,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                     Socket ID: {socket?.id || '—'}
                   </div>
                   <div className="text-[10px] text-text-muted mt-auto pt-1.5 border-t border-border">
-                    Host LAN URL: {localIp}:3001
+                    Host LAN URL: {localIp}:5173
                   </div>
                 </div>
 
@@ -1511,19 +1619,19 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                 </div>
               </div>
 
-              {/* WebRTC Real-Time Hardware Diagnostics Table */}
-              <div className="bg-bg-card border border-border p-5 rounded-2xl shadow-card flex flex-col gap-3.5 font-mono text-xs">
+              {/* WebRTC Diagnostics Table */}
+              <div className="bg-bg-card border border-border p-4 sm:p-5 rounded-2xl shadow-card flex flex-col gap-3.5 font-mono text-xs">
                 <div className="flex items-center justify-between pb-2.5 border-b border-border">
                   <div>
                     <span className="font-heading font-bold text-sm tracking-wider uppercase text-text-primary">
-                      LIVE PHYSICAL RF &amp; WEBRTC TELEMETRY ({hostAudio.getPeerConnections().size} ACTIVE LINKS)
+                      LIVE RF &amp; WEBRTC TELEMETRY ({hostAudio.getPeerConnections().size} ACTIVE LINKS)
                     </span>
                     <p className="text-[10px] text-text-muted mt-0.5">
-                      Actual measured physical network statistics and jitter buffer health (no simulated indicators).
+                      Actual measured physical network statistics and jitter buffer health.
                     </p>
                   </div>
                   <span className="text-[10px] text-accent-blue font-bold px-2.5 py-0.5 bg-bg-secondary border border-accent-blue/40 rounded-full">
-                    REAL-TIME SENSORS
+                    REAL-TIME
                   </span>
                 </div>
 
@@ -1532,16 +1640,15 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                     No active WebRTC peer connections established. Connect handsets via QR code or inject test handsets below.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto w-full">
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="border-b border-border text-[10px] text-text-muted uppercase">
                           <th className="py-2 px-2">CH / CALL SIGN</th>
                           <th className="py-2 px-2">RTT</th>
-                          <th className="py-2 px-2">PACKET LOSS</th>
+                          <th className="py-2 px-2">LOSS</th>
                           <th className="py-2 px-2">JITTER</th>
                           <th className="py-2 px-2">BITRATE</th>
-                          <th className="py-2 px-2">BUFFER TARGET</th>
                           <th className="py-2 px-2">CLIPPING</th>
                           <th className="py-2 px-2">STATE</th>
                           <th className="py-2 px-2 text-right">ACTION</th>
@@ -1575,7 +1682,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                               </td>
                               <td className="py-2 px-2 font-mono">
                                 <span className={loss > 5 ? 'text-red-400 font-bold' : loss > 0 ? 'text-yellow-400' : 'text-text-secondary'}>
-                                  {loss}% ({stats?.packetsLost || 0} lost)
+                                  {loss}%
                                 </span>
                               </td>
                               <td className="py-2 px-2 font-mono text-text-secondary">
@@ -1584,22 +1691,19 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                               <td className="py-2 px-2 font-mono text-text-primary">
                                 {stats?.bitrateKbps ? `${stats.bitrateKbps} kbps` : '96 kbps'}
                               </td>
-                              <td className="py-2 px-2 font-mono text-text-secondary">
-                                {stats?.jitterBufferDelayMs ? `${stats.jitterBufferDelayMs} ms` : '25 ms (Adaptive)'}
-                              </td>
                               <td className="py-2 px-2">
                                 {isClipped ? (
                                   <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-950/60 text-red-300 border border-red-500 animate-pulse">
-                                    ⚠️ CLIPPING
+                                    CLIPPING
                                   </span>
                                 ) : (
                                   <span className="text-[10px] text-green-400">CLEAN</span>
                                 )}
                               </td>
                               <td className="py-2 px-2">
-                                <span className={`px-1.5 py-0.5 border text-[10px] uppercase ${
+                                <span className={`px-1.5 py-0.5 border rounded text-[10px] uppercase ${
                                   pc.connectionState === 'connected'
-                                    ? 'bg-text-primary text-text-inverse border-white font-bold'
+                                    ? 'bg-accent-blue text-white border-accent-blue font-bold'
                                     : 'bg-bg-main text-text-muted border-border'
                                 }`}>
                                   {pc.connectionState}
@@ -1608,7 +1712,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
                               <td className="py-2 px-2 text-right">
                                 <button
                                   onClick={() => handleKickParticipant(pId)}
-                                  className="px-2 py-0.5 border border-border text-text-secondary hover:text-white hover:border-white text-[10px] uppercase"
+                                  className="px-2 py-0.5 border border-border text-text-secondary hover:text-white rounded text-[10px] uppercase"
                                 >
                                   DISCONNECT
                                 </button>
@@ -1623,7 +1727,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
               </div>
 
               {/* Virtual Handset Injection Test Bench */}
-              <div className="bg-bg-card border border-border p-5 rounded-2xl shadow-xl shadow-black/40 flex flex-col gap-3.5 font-mono text-xs">
+              <div className="bg-bg-card border border-border p-4 sm:p-5 rounded-2xl shadow-xl shadow-black/40 flex flex-col gap-3.5 font-mono text-xs">
                 <div className="pb-2.5 border-b border-border">
                   <h3 className="font-heading font-bold text-sm tracking-wider uppercase text-text-primary">
                     VIRTUAL PARTICIPANT INJECTION TEST BENCH
@@ -1673,8 +1777,8 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
 
         </main>
 
-        {/* ===================== RIGHT-SIDE MONITORING PANEL ===================== */}
-        <aside className="w-72 bg-bg-secondary/70 backdrop-blur-sm border-l border-border flex flex-col p-3.5 gap-4 overflow-y-auto select-none">
+        {/* ===================== DESKTOP RIGHT ASIDE: TELEMETRY & SYSTEM LOG (HIDDEN ON MOBILE/TABLET) ===================== */}
+        <aside className="w-72 bg-bg-secondary/70 backdrop-blur-sm border-l border-border hidden xl:flex flex-col p-3.5 gap-4 overflow-y-auto select-none flex-shrink-0">
           {/* Status Box */}
           <section className="bg-bg-card border border-border p-3.5 rounded-xl space-y-2 text-xs font-mono shadow-card">
             <div className="text-[10px] text-text-muted uppercase tracking-widest font-bold pb-1.5 border-b border-border">
@@ -1755,7 +1859,7 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-72">
-              {(session?.recentEvents || []).map((evt) => (
+              {(session?.recentEvents || []).slice(-50).map((evt) => (
                 <div key={evt.id} className="text-[10px] pb-1.5 border-b border-border/40">
                   <div className="flex justify-between text-text-muted">
                     <span className="font-semibold text-text-primary">{evt.message}</span>
@@ -1770,6 +1874,37 @@ export const AdminControlRoom: React.FC<AdminControlRoomProps> = ({
           </section>
         </aside>
       </div>
+
+      {/* ===================== MOBILE & TABLET BOTTOM NAVIGATION DOCK ===================== */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-bg-secondary/95 backdrop-blur-lg border-t border-border px-2 py-1.5 flex items-center justify-around select-none shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+        {navigationTabs.map((item) => {
+          const Icon = item.icon;
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => handleTabChange(item.id)}
+              className={`flex-1 py-1 px-1 flex flex-col items-center justify-center gap-0.5 relative transition-colors min-h-[46px] rounded-lg ${
+                isActive
+                  ? 'text-accent-blue font-bold bg-accent-blue/10'
+                  : 'text-text-muted hover:text-text-secondary'
+              }`}
+            >
+              <div className="relative">
+                <Icon size={17} />
+                {item.badge && (
+                  <span className="absolute -top-1.5 -right-2.5 w-3.5 h-3.5 bg-accent-blue text-white rounded-full text-[8px] font-mono font-bold flex items-center justify-center shadow-xs">
+                    {item.badge.length > 2 ? '•' : item.badge}
+                  </span>
+                )}
+              </div>
+              <span className="text-[9px] font-mono tracking-tight leading-none mt-0.5">
+                {item.shortLabel}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
 
       {/* QR Code Modal for Phone Pairing */}
       <QRCodeModal

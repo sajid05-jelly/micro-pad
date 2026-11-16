@@ -202,7 +202,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           <div className="hidden md:block absolute left-1/2 top-0 bottom-0 -translate-x-1/2 w-[1px] bg-white/10 pointer-events-none z-20"></div>
 
           {/* LEFT REEL COMPARTMENT (Start a Session) */}
-          <div className="flex-1 w-full relative z-10 flex flex-col items-center text-center p-2.5 sm:p-3 md:p-4 lg:p-5 border-b md:border-b-0 md:border-r border-white/10 transition-all duration-300 hover:bg-white/[0.02] hover:shadow-[inset_0_0_35px_rgba(255,255,255,0.06),0_0_30px_rgba(255,255,255,0.1)] group cursor-default">
+          <div className="flex-1 w-full relative z-10 flex flex-col items-center text-center p-2.5 sm:p-3 md:p-4 lg:p-5 border-b md:border-b-0 border-white/10 transition-all duration-300 hover:bg-white/[0.02] hover:shadow-[inset_0_0_35px_rgba(255,255,255,0.06),0_0_30px_rgba(255,255,255,0.1)] group cursor-default">
             
             {/* Interactive Spinning Tape Reel */}
             <div
