@@ -16,6 +16,22 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
 
+  /* Absolute No-Scroll Lock for Home Entry Screen */
+  html.home-lock,
+  body.home-lock {
+    position: fixed !important;
+    width: 100% !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    max-height: 100% !important;
+    max-height: 100dvh !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    touch-action: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   /* Custom Minimalist Dark Scrollbars */
   ::-webkit-scrollbar {
     width: 6px;

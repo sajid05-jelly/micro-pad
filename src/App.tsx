@@ -74,19 +74,28 @@ export default function App() {
   const hostAudioRef = useRef<HostAudioEngine>(new HostAudioEngine());
   const socketRef = useRef<Socket | null>(null);
 
-  // Prevent any scrolling on the home entry page
+  // Absolute hardware no-scroll lock for home entry page
   useEffect(() => {
     if (role === 'home') {
-      document.body.style.overflow = 'hidden';
-      document.documentElement.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-      document.documentElement.style.overflow = '';
+      document.documentElement.classList.add('home-lock');
+      document.body.classList.add('home-lock');
+
+      const preventScroll = (e: Event) => {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+      };
+
+      window.addEventListener('wheel', preventScroll, { passive: false });
+      window.addEventListener('touchmove', preventScroll, { passive: false });
+
+      return () => {
+        document.documentElement.classList.remove('home-lock');
+        document.body.classList.remove('home-lock');
+        window.removeEventListener('wheel', preventScroll);
+        window.removeEventListener('touchmove', preventScroll);
+      };
     }
-    return () => {
-      document.body.style.overflow = '';
-      document.documentElement.style.overflow = '';
-    };
   }, [role]);
 
   // Listen to popstate or browser navigation changes
@@ -258,7 +267,7 @@ export default function App() {
   };
 
   return (
-    <div className={`w-full ${role === 'home' ? 'h-screen max-h-screen overflow-hidden' : 'min-h-screen overflow-x-hidden'} bg-[#05080f] text-text-primary relative`}>
+    <div className={`w-full ${role === 'home' ? 'fixed inset-0 w-screen h-screen h-[100dvh] overflow-hidden overscroll-none select-none touch-none' : 'min-h-screen overflow-x-hidden'} bg-[#05080f] text-text-primary relative`}>
       {/* Live Rotating Antigravity Glow Effect */}
       <div className="glow-container">
         <div className="glow-spinner">
