@@ -80,6 +80,7 @@ export class ParticipantAudioEngine {
   private lastClipTimestamp: number = 0;
   private totalClipEvents: number = 0;
   private currentAppliedBitrate: number = 96000;
+  private wakeLock: any = null;
 
   private audioSettings: AudioCaptureSettings = {
     echoCancellation: false,
@@ -89,7 +90,40 @@ export class ParticipantAudioEngine {
     sensitivity: 1.0
   };
 
-  constructor() {}
+  constructor() {
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && this.stream && !this.wakeLock) {
+          this.acquireWakeLock().catch(() => {});
+        }
+      });
+    }
+  }
+
+  /**
+   * Prevents phone screen and Wi-Fi radio from sleeping during live audio transmission
+   */
+  public async acquireWakeLock() {
+    if (typeof navigator !== 'undefined' && 'wakeLock' in navigator) {
+      try {
+        this.wakeLock = await (navigator as any).wakeLock.request('screen');
+        this.wakeLock.addEventListener('release', () => {
+          this.wakeLock = null;
+        });
+      } catch (e) {
+        console.warn('[ParticipantAudioEngine] Screen wake lock unavailable:', e);
+      }
+    }
+  }
+
+  public releaseWakeLock() {
+    if (this.wakeLock) {
+      try {
+        this.wakeLock.release();
+      } catch {}
+      this.wakeLock = null;
+    }
+  }
 
   /**
    * Resumes or initializes the AudioContext inside a user gesture handler.
@@ -254,6 +288,7 @@ export class ParticipantAudioEngine {
     }
 
     console.log(`[ParticipantAudioEngine] Microphone live: "${primaryTrack.label || 'Default Mic'}" (${this.audioContext.state}, ${this.audioContext.sampleRate}Hz)`);
+    this.acquireWakeLock().catch(() => {});
     return stream;
   }
 
@@ -826,6 +861,7 @@ export class ParticipantAudioEngine {
   }
 
   public stop() {
+    this.releaseWakeLock();
     this.stopMeterLoop();
     if (this.peerConnection) {
       this.peerConnection.close();

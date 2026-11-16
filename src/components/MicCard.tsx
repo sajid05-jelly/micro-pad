@@ -128,22 +128,35 @@ export const MicCard = React.memo<MicCardProps>(({
       <div className={`flex items-center justify-between text-[10px] font-mono px-2 py-1 rounded border mt-1 ${
         stats?.isClipping
           ? 'border-red-500/70 bg-red-950/40 text-red-300 font-bold animate-pulse'
+          : stats?.quality === 'POOR' || stats?.quality === 'DISCONNECTED'
+          ? 'border-red-500/60 bg-red-950/30 text-red-300'
+          : stats?.quality === 'UNSTABLE'
+          ? 'border-yellow-500/60 bg-yellow-950/30 text-yellow-300'
           : isSelected 
           ? 'border-accent-blue/30 bg-bg-secondary text-text-secondary' 
           : 'border-border/60 bg-bg-secondary text-text-secondary'
       }`}>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           {stats?.isClipping ? (
             <span className="text-red-400 font-bold">⚠️ CLIPPING</span>
           ) : (
             <>
-              <Wifi size={10} className={stats && stats.packetLossPct > 5 ? 'animate-pulse text-red-400' : 'text-accent-blue/70'} />
-              <span>{stats && stats.rttMs > 0 ? `${stats.rttMs}ms` : 'LINK OK'}</span>
+              <Wifi size={10} className={
+                stats?.quality === 'POOR' ? 'animate-pulse text-red-400' :
+                stats?.quality === 'UNSTABLE' ? 'text-yellow-400' :
+                stats?.quality === 'GOOD' ? 'text-sky-400' : 'text-emerald-400'
+              } />
+              <span className={`font-semibold ${
+                stats?.quality === 'POOR' ? 'text-red-400' :
+                stats?.quality === 'UNSTABLE' ? 'text-yellow-400' : ''
+              }`}>
+                {stats?.quality || (stats && stats.rttMs > 0 ? `${stats.rttMs}ms` : 'LINK OK')}
+              </span>
             </>
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          <span className={stats && stats.packetLossPct > 5 ? 'font-bold underline text-red-400' : ''}>
+          <span className={stats && stats.packetLossPct > 3 ? 'font-bold underline text-red-400' : ''}>
             LOSS: {stats ? `${stats.packetLossPct}%` : '0%'}
           </span>
           {stats && stats.jitterMs > 0 && (
@@ -235,6 +248,7 @@ export const MicCard = React.memo<MicCardProps>(({
     prev.participant.isMutedByAdmin === next.participant.isMutedByAdmin &&
     prev.participant.isMutedSelf === next.participant.isMutedSelf &&
     Math.round((prev.participant.audioLevel || 0) / 4) === Math.round((next.participant.audioLevel || 0) / 4) &&
+    prev.stats?.quality === next.stats?.quality &&
     prev.stats?.isClipping === next.stats?.isClipping &&
     prev.stats?.packetLossPct === next.stats?.packetLossPct &&
     prev.stats?.rttMs === next.stats?.rttMs

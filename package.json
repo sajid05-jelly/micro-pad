@@ -10,7 +10,7 @@
     "client:tunnel": "tsx scripts/start-client-tunnel.ts",
     "server": "tsx server/index.ts",
     "tunnel": "tsx scripts/tunnel.ts",
-    "test": "tsx test/arbitration.test.ts && tsx test/audio-performance.test.ts && tsx test/scalability-resilience.test.ts",
+    "test": "tsx test/arbitration.test.ts && tsx test/audio-performance.test.ts && tsx test/scalability-resilience.test.ts && tsx test/distance-reliability.test.ts",
     "test:integration": "tsx test/mobile-connection.test.ts && tsx test/mute-unmute.test.ts",
     "build": "tsc && vite build",
     "preview": "vite preview --host 0.0.0.0"

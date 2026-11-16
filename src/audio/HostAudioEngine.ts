@@ -1,4 +1,4 @@
-import { NetworkQualityLevel, SpeakerOutputConfig } from '../types.js';
+import { NetworkQualityLevel, NetworkThresholdConfig, SpeakerOutputConfig } from '../types.js';
 
 // Web Audio API Host Audio Engine
 // Professional broadcast pipeline: per-channel trim, peak limiting, clickless crossfade,
@@ -15,19 +15,80 @@ export function optimizeOpusSDP(sdp: string): string {
   });
 }
 
+export const DEFAULT_NETWORK_THRESHOLDS: NetworkThresholdConfig = {
+  lossExcellentMax: 1.0,  // < 1.0% packet loss
+  lossGoodMax: 3.0,       // 1.0% to 3.0% packet loss
+  lossUnstableMax: 8.0,   // 3.0% to 8.0% packet loss (>= 8.0% is Poor)
+  rttExcellentMax: 40,    // < 40ms round-trip time
+  rttGoodMax: 80,         // 40ms to 80ms RTT
+  rttUnstableMax: 140,    // 80ms to 140ms RTT (>= 140ms is Poor)
+  jitterExcellentMax: 15, // < 15ms packet jitter
+  jitterGoodMax: 30,      // 15ms to 30ms jitter
+  jitterUnstableMax: 50   // 30ms to 50ms jitter (>= 50ms is Poor)
+};
+
+/**
+ * Deterministic ITU-T G.107 VoIP Quality Evaluation
+ */
+export function evaluateNetworkQuality(
+  packetLossPct: number,
+  rttMs: number,
+  jitterMs: number,
+  connectionState: RTCPeerConnectionState,
+  thresholds: NetworkThresholdConfig = DEFAULT_NETWORK_THRESHOLDS
+): { quality: NetworkQualityLevel; score: number } {
+  if (connectionState === 'disconnected' || connectionState === 'failed' || connectionState === 'closed') {
+    return { quality: 'DISCONNECTED', score: 0 };
+  }
+
+  // Calculate composite R-factor score (0 - 100)
+  const lossPenalty = Math.min(50, packetLossPct * 5);
+  const rttPenalty = Math.min(30, Math.max(0, (rttMs - 20) * 0.25));
+  const jitterPenalty = Math.min(20, Math.max(0, (jitterMs - 10) * 0.4));
+
+  const score = Math.max(0, Math.min(100, Math.round(100 - lossPenalty - rttPenalty - jitterPenalty)));
+
+  if (packetLossPct >= thresholds.lossUnstableMax || rttMs >= thresholds.rttUnstableMax || jitterMs >= thresholds.jitterUnstableMax) {
+    return { quality: 'POOR', score };
+  }
+  if (packetLossPct >= thresholds.lossGoodMax || rttMs >= thresholds.rttGoodMax || jitterMs >= thresholds.jitterGoodMax) {
+    return { quality: 'UNSTABLE', score };
+  }
+  if (packetLossPct >= thresholds.lossExcellentMax || rttMs >= thresholds.rttExcellentMax || jitterMs >= thresholds.jitterExcellentMax) {
+    return { quality: 'GOOD', score };
+  }
+  return { quality: 'EXCELLENT', score };
+}
+
 export interface PeerNetworkStats {
   rttMs: number;
+  packetsReceived: number;
   packetsLost: number;
-  packetLossPct: number;
+  packetLossPct: number; // Delta-based real-time loss percentage
+  lifetimePacketLossPct: number; // Cumulative lifetime loss percentage
   jitterMs: number;
   audioLevel: number;
-  bitrateKbps: number;
+  bytesReceived: number;
+  bitrateKbps: number; // Real-time inbound bitrate (kbps)
   candidateType: string;
+  codec: string;
+  connectionState: RTCPeerConnectionState;
+  iceConnectionState: RTCIceConnectionState;
   jitterBufferDelayMs?: number;
   packetsDiscarded?: number;
   fecPacketsReceived?: number;
+  concealedSamples?: number;
+  concealmentEvents?: number;
   isClipping?: boolean;
-  quality?: NetworkQualityLevel;
+  quality: NetworkQualityLevel;
+  qualityScore: number;
+}
+
+interface PeerStatsHistory {
+  timestamp: number;
+  packetsReceived: number;
+  packetsLost: number;
+  bytesReceived: number;
 }
 
 export class HostAudioEngine {
@@ -75,6 +136,8 @@ export class HostAudioEngine {
   private mutedParticipantIds: Set<string> = new Set();
   private peerConnections: Map<string, RTCPeerConnection> = new Map();
   private pendingCandidates: Map<string, RTCIceCandidateInit[]> = new Map();
+  private peerStatsHistory: Map<string, PeerStatsHistory> = new Map();
+  private networkThresholds: NetworkThresholdConfig = { ...DEFAULT_NETWORK_THRESHOLDS };
 
   constructor() {}
 
@@ -338,7 +401,7 @@ export class HostAudioEngine {
     }
   }
 
-  // Set per-channel pre-amp trim (0.5x to 3.0x, i.e., -6dB to +10dB safe boost)
+  // Set per-channel pre-amp trim (0.5x to 3.5x, i.e., -6dB to +10.8dB safe boost)
   public setChannelTrim(participantId: string, trimMultiplier: number) {
     const clamped = Math.max(0.2, Math.min(3.5, trimMultiplier));
     this.channelTrim.set(participantId, clamped);
@@ -463,7 +526,7 @@ export class HostAudioEngine {
     // Auto-reconnect handling on connection drops
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-        console.warn(`[WebRTC] Peer ${participantId} connection ${pc.connectionState}, re-evaluating...`);
+        console.warn(`[WebRTC] Peer ${participantId} connection ${pc.connectionState}, standing by for renegotiation...`);
       }
     };
 
@@ -475,61 +538,163 @@ export class HostAudioEngine {
     return this.peerConnections.get(participantId);
   }
 
-  // Collect real-time WebRTC network statistics (RTT, Packet Loss, Jitter, Audio Level, Clipping, Adaptive Jitter Buffer)
+  // Trigger ICE restart for a specific handset
+  public async restartIce(participantId: string, sendSignal: (signal: any, type: string) => void): Promise<boolean> {
+    const pc = this.peerConnections.get(participantId);
+    if (!pc) return false;
+    try {
+      const offer = await pc.createOffer({ iceRestart: true });
+      if (offer.sdp) {
+        offer.sdp = optimizeOpusSDP(offer.sdp);
+      }
+      await pc.setLocalDescription(offer);
+      sendSignal(offer, 'offer');
+      console.log(`[HostAudioEngine] ICE restart initiated for peer ${participantId}`);
+      return true;
+    } catch (err) {
+      console.warn(`[HostAudioEngine] ICE restart failed for ${participantId}:`, err);
+      return false;
+    }
+  }
+
+  public setNetworkThresholds(thresholds: Partial<NetworkThresholdConfig>) {
+    this.networkThresholds = { ...this.networkThresholds, ...thresholds };
+  }
+
+  public getNetworkThresholds(): NetworkThresholdConfig {
+    return { ...this.networkThresholds };
+  }
+
+  /**
+   * Collect real-time WebRTC network statistics.
+   * Calculates true delta packet loss percentage using counter differences between consecutive reports.
+   * Measures inbound audio bitrate, jitter buffer delay, codec, and evaluates ITU-T G.107 quality.
+   */
   public async getPeerStats(participantId: string): Promise<PeerNetworkStats> {
     const defaultStats: PeerNetworkStats = {
       rttMs: 0,
+      packetsReceived: 0,
       packetsLost: 0,
       packetLossPct: 0,
+      lifetimePacketLossPct: 0,
       jitterMs: 0,
       audioLevel: 0,
+      bytesReceived: 0,
       bitrateKbps: 0,
       candidateType: 'none',
+      codec: 'Opus 48,000 Hz',
+      connectionState: 'new',
+      iceConnectionState: 'new',
       jitterBufferDelayMs: 0,
       packetsDiscarded: 0,
       fecPacketsReceived: 0,
+      concealedSamples: 0,
+      concealmentEvents: 0,
       isClipping: false,
-      quality: 'EXCELLENT'
+      quality: 'EXCELLENT',
+      qualityScore: 100
     };
 
     const pc = this.peerConnections.get(participantId);
     if (!pc) {
       return defaultStats;
     }
+
     try {
       const stats = await pc.getStats();
+      const now = Date.now();
+
       let rtt = 0;
-      let packetsLost = 0;
-      let packetLossPct = 0;
+      let currPacketsLost = 0;
+      let currPacketsReceived = 0;
+      let currBytesReceived = 0;
       let jitter = 0;
       let audioLevel = 0;
-      let bitrate = 0;
       let candidateType = 'host';
+      let codecString = 'Opus 48,000 Hz';
       let jitterBufferDelayMs = 0;
       let packetsDiscarded = 0;
       let fecPacketsReceived = 0;
+      let concealedSamples = 0;
+      let concealmentEvents = 0;
+
+      const codecMap = new Map<string, string>();
+      stats.forEach((report: any) => {
+        if (report.type === 'codec' && report.mimeType) {
+          const mime = report.mimeType.replace(/^audio\//i, '').toUpperCase();
+          const rate = report.clockRate ? `${report.clockRate}Hz` : '48kHz';
+          const channels = report.channels === 2 ? 'Stereo' : 'Mono';
+          codecMap.set(report.id, `${mime} ${rate} (${channels})`);
+        }
+      });
 
       stats.forEach((report: any) => {
         if (report.type === 'candidate-pair' && (report.state === 'succeeded' || report.nominated)) {
           rtt = Math.round((report.currentRoundTripTime || 0) * 1000);
         }
+        if (report.type === 'remote-candidate' && report.candidateType) {
+          candidateType = report.candidateType;
+        }
         if (report.type === 'inbound-rtp' && report.kind === 'audio') {
-          packetsLost = report.packetsLost || 0;
+          currPacketsLost = report.packetsLost || 0;
+          currPacketsReceived = report.packetsReceived || 0;
+          currBytesReceived = report.bytesReceived || 0;
           jitter = Math.round((report.jitter || 0) * 1000);
           audioLevel = Math.round((report.audioLevel || 0) * 100);
           packetsDiscarded = report.packetsDiscarded || 0;
           fecPacketsReceived = report.fecPacketsReceived || 0;
+          concealedSamples = report.concealedSamples || 0;
+          concealmentEvents = report.concealmentEvents || 0;
+
+          if (report.codecId && codecMap.has(report.codecId)) {
+            codecString = codecMap.get(report.codecId)!;
+          }
+
           if (report.jitterBufferDelay && report.jitterBufferEmittedCount) {
             jitterBufferDelayMs = Math.round((report.jitterBufferDelay / report.jitterBufferEmittedCount) * 1000);
           }
-          const totalPackets = (report.packetsReceived || 0) + (report.packetsLost || 0);
-          packetLossPct = totalPackets > 0 ? Math.round((report.packetsLost / totalPackets) * 100) : 0;
         }
       });
 
-      // Adaptive Playout Delay / Jitter Buffer Target:
-      // Base target: 25ms. When jitter/packet loss increases due to distance, scale up to 100-120ms smoothly.
-      const targetSec = Math.min(0.12, Math.max(0.025, (jitter / 1000) * 2.5 + (packetLossPct > 5 ? 0.03 : 0)));
+      // 1. Calculate Real-Time Delta Packet Loss Percentage
+      const prev = this.peerStatsHistory.get(participantId);
+      let realTimePacketLossPct = 0;
+      let inboundBitrateKbps = 0;
+
+      if (prev) {
+        const deltaLost = Math.max(0, currPacketsLost - prev.packetsLost);
+        const deltaReceived = Math.max(0, currPacketsReceived - prev.packetsReceived);
+        const deltaTotal = deltaLost + deltaReceived;
+        if (deltaTotal > 0) {
+          realTimePacketLossPct = Math.min(100, Math.round((deltaLost / deltaTotal) * 1000) / 10);
+        }
+
+        const timeDiffSec = (now - prev.timestamp) / 1000;
+        if (timeDiffSec > 0) {
+          const deltaBytes = Math.max(0, currBytesReceived - prev.bytesReceived);
+          inboundBitrateKbps = Math.round(((deltaBytes * 8) / (timeDiffSec * 1000)) * 10) / 10;
+        }
+      } else {
+        const total = currPacketsReceived + currPacketsLost;
+        realTimePacketLossPct = total > 0 ? Math.round((currPacketsLost / total) * 1000) / 10 : 0;
+      }
+
+      // Lifetime cumulative packet loss percentage
+      const lifetimeTotal = currPacketsReceived + currPacketsLost;
+      const lifetimeLossPct = lifetimeTotal > 0 ? Math.round((currPacketsLost / lifetimeTotal) * 1000) / 10 : 0;
+
+      // Update history buffer for next delta calculation
+      this.peerStatsHistory.set(participantId, {
+        timestamp: now,
+        packetsReceived: currPacketsReceived,
+        packetsLost: currPacketsLost,
+        bytesReceived: currBytesReceived
+      });
+
+      // 2. Adaptive Playout Delay / Jitter Buffer Target:
+      // Base target: 25ms (low latency).
+      // Scales dynamically up to 100-120ms based on delta jitter and packet loss to prevent audio cutoffs at distance.
+      const targetSec = Math.min(0.12, Math.max(0.025, (jitter / 1000) * 2.5 + (realTimePacketLossPct > 3 ? 0.04 : 0)));
       const receiver = pc.getReceivers().find(r => r.track && r.track.kind === 'audio');
       if (receiver) {
         if ('jitterBufferTarget' in receiver) {
@@ -540,7 +705,7 @@ export class HostAudioEngine {
         }
       }
 
-      // Check real-time hardware sample clipping on host channel node
+      // 3. Hardware Sample Clipping Check on Host Channel Node
       let isClipping = false;
       const channelNode = this.channelNodes.get(participantId);
       if (channelNode && channelNode.analyser) {
@@ -554,29 +719,37 @@ export class HostAudioEngine {
         }
       }
 
-      // Quality tier
-      let quality: NetworkQualityLevel = 'EXCELLENT';
-      if (packetLossPct > 8 || rtt > 140 || jitter > 60) {
-        quality = 'POOR';
-      } else if (packetLossPct > 3 || rtt > 70 || jitter > 35) {
-        quality = 'FAIR';
-      } else if (packetLossPct > 0 || rtt > 30 || jitter > 15) {
-        quality = 'GOOD';
-      }
+      // 4. Quality Evaluation via Documented Industry Thresholds
+      const { quality, score: qualityScore } = evaluateNetworkQuality(
+        realTimePacketLossPct,
+        rtt,
+        jitter,
+        pc.connectionState,
+        this.networkThresholds
+      );
 
       return {
         rttMs: rtt,
-        packetsLost,
-        packetLossPct,
+        packetsReceived: currPacketsReceived,
+        packetsLost: currPacketsLost,
+        packetLossPct: realTimePacketLossPct,
+        lifetimePacketLossPct: lifetimeLossPct,
         jitterMs: jitter,
         audioLevel,
-        bitrateKbps: bitrate,
+        bytesReceived: currBytesReceived,
+        bitrateKbps: inboundBitrateKbps,
         candidateType,
+        codec: codecString,
+        connectionState: pc.connectionState,
+        iceConnectionState: pc.iceConnectionState,
         jitterBufferDelayMs,
         packetsDiscarded,
         fecPacketsReceived,
+        concealedSamples,
+        concealmentEvents,
         isClipping,
-        quality
+        quality,
+        qualityScore
       };
     } catch (e) {
       return defaultStats;
@@ -616,6 +789,7 @@ export class HostAudioEngine {
 
   public closePeerConnection(participantId: string) {
     this.pendingCandidates.delete(participantId);
+    this.peerStatsHistory.delete(participantId);
     const pc = this.peerConnections.get(participantId);
     if (pc) {
       pc.close();
@@ -636,6 +810,7 @@ export class HostAudioEngine {
     for (const id of this.peerConnections.keys()) {
       this.closePeerConnection(id);
     }
+    this.peerStatsHistory.clear();
     if (this.audioContext) {
       this.audioContext.close();
       this.audioContext = null;

@@ -62,7 +62,19 @@ export interface SessionState {
   recentEvents: SystemEvent[];
 }
 
-export type NetworkQualityLevel = 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
+export type NetworkQualityLevel = 'EXCELLENT' | 'GOOD' | 'UNSTABLE' | 'POOR' | 'DISCONNECTED' | 'FAIR';
+
+export interface NetworkThresholdConfig {
+  lossExcellentMax: number;   // default: 1.0%
+  lossGoodMax: number;        // default: 3.0%
+  lossUnstableMax: number;    // default: 8.0%
+  rttExcellentMax: number;    // default: 40ms
+  rttGoodMax: number;         // default: 80ms
+  rttUnstableMax: number;     // default: 140ms
+  jitterExcellentMax: number; // default: 15ms
+  jitterGoodMax: number;      // default: 30ms
+  jitterUnstableMax: number;  // default: 50ms
+}
 
 export interface AudioCaptureSettings {
   echoCancellation: boolean;
